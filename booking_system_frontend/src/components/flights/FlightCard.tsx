@@ -1,7 +1,7 @@
 import type { Flight, SeatClass } from '../../types';
 import { Card, Button } from '../common';
 import { Plane, Clock, Users, Crown, Rocket } from 'lucide-react';
-import { formatCurrency, formatDate, formatTime, calculateDuration } from '../../utils/formatters';
+import { formatCurrency, convertCurrency, formatDate, formatTime, calculateDuration } from '../../utils/formatters';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { getDestinationByName } from '../../data/destinations';
@@ -141,7 +141,7 @@ export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
                     </div>
                     <div className="text-right">
                       <div className={`text-lg font-bold ${seatClass.color}`}>
-                        {formatCurrency(seatClass.price, currency, locale)}
+                        {formatCurrency(convertCurrency(seatClass.price, currency), currency, locale)}
                       </div>
                       <div className="flex items-center gap-1 text-xs">
                         <Users size={12} className={isLowSeats ? 'text-solar-orange' : 'text-star-white/60'} />

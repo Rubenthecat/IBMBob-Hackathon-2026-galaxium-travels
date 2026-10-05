@@ -1,7 +1,7 @@
 import type { Booking, Flight } from '../../types';
 import { Card, Button } from '../common';
 import { Plane, Calendar, CheckCircle, XCircle, Clock, Crown, Rocket } from 'lucide-react';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatCurrency, convertCurrency } from '../../utils/formatters';
 import { motion } from 'framer-motion';
 import { useLocaleSettings } from '../../hooks/useLocaleSettingsContext';
 
@@ -138,7 +138,7 @@ export const BookingCard = ({ booking, flight, onCancel, isCancelling }: Booking
               <div className="flex items-center justify-between">
                 <span className="text-sm text-star-white/60">Price Paid</span>
                 <span className="text-lg font-bold text-star-white">
-                  {formatCurrency(booking.price_paid, currency, locale)}
+                  {formatCurrency(convertCurrency(booking.price_paid, currency), currency, locale)}
                 </span>
               </div>
             </div>

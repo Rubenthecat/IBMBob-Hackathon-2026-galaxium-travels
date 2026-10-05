@@ -12,7 +12,7 @@ import {
   Timer,
   Zap,
 } from 'lucide-react';
-import { formatCurrency, formatDate, calculateDuration } from '../../utils/formatters';
+import { formatCurrency, convertCurrency, formatDate, calculateDuration } from '../../utils/formatters';
 import { createQuote, createHold, confirmHold, releaseHold } from '../../services/api';
 import { storeHold, removeHold } from '../../utils/holdStorage';
 import { useUser } from '../../hooks/useUserContext';
@@ -275,7 +275,7 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-bold ${sc.color}`}>
-                      {formatCurrency(sc.price)}
+                      {formatCurrency(convertCurrency(sc.price, currency), currency, locale)}
                     </div>
                     <div className="text-xs text-star-white/60">
                       {isSoldOut ? 'Sold Out' : `${sc.seats} left`}
@@ -333,13 +333,13 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
               <span className="text-sm text-star-white/70">{selectedClassData?.name} × 1</span>
             </div>
             <span className="text-star-white font-medium">
-              {formatCurrency(quote?.pricePerSeat || 0, currency, locale)}
+              {formatCurrency(convertCurrency(quote?.pricePerSeat || 0, currency), currency, locale)}
             </span>
           </div>
           <div className="border-t border-white/10 pt-3 flex items-center justify-between">
             <span className="font-semibold text-star-white">Total</span>
             <span className="text-xl font-bold text-alien-green">
-              {formatCurrency(quote?.totalPrice || 0, currency, locale)}
+              {formatCurrency(convertCurrency(quote?.totalPrice || 0, currency), currency, locale)}
             </span>
           </div>
           <p className="text-xs text-star-white/50">
@@ -406,7 +406,7 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
           <span className="text-white font-semibold">Total</span>
         </div>
         <span className="text-xl font-bold text-white">
-          {formatCurrency(quote?.totalPrice || 0, currency, locale)}
+          {formatCurrency(convertCurrency(quote?.totalPrice || 0, currency), currency, locale)}
         </span>
       </div>
 

@@ -1,4 +1,5 @@
 import { format, parseISO } from 'date-fns';
+import type { SupportedCurrency } from '../types';
 
 /**
  * Apply a timezone offset to a UTC Date, returning a new Date whose
@@ -81,8 +82,9 @@ export const formatTime = (
 };
 
 /**
- * Format currency
- * @param amount Amount in dollars
+ * Format currency — uses each currency's standard decimal places
+ * (e.g. JPY/KRW → 0, USD/EUR/GBP/etc → 2) via Intl.NumberFormat defaults.
+ * @param amount Already-converted amount in the target currency
  * @param currency ISO 4217 currency code (default: 'USD')
  * @param locale BCP 47 locale string (default: 'en-US')
  */
@@ -94,9 +96,52 @@ export const formatCurrency = (
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
   }).format(amount);
+};
+
+/**
+ * Static USD-base exchange rates for all 15 supported currencies.
+ * All backend prices are in USD; multiply by the rate to get the display value.
+ */
+export const EXCHANGE_RATES: Record<SupportedCurrency, number> = {
+  USD: 1.00,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 149.50,
+  CAD: 1.36,
+  AUD: 1.53,
+  CHF: 0.90,
+  CNY: 7.24,
+  INR: 83.50,
+  BRL: 4.97,
+  MXN: 17.15,
+  SGD: 1.34,
+  HKD: 7.82,
+  NZD: 1.63,
+  KRW: 1325.00,
+};
+
+/** Currencies that use zero decimal places by CLDR/ISO standard. */
+const ZERO_DECIMAL_CURRENCIES = new Set<SupportedCurrency>(['JPY', 'KRW']);
+
+/**
+ * Convert a USD amount to the target currency using the static exchange-rate table.
+ * Returns an integer for zero-decimal currencies (JPY, KRW),
+ * or a value rounded to 2 decimal places for all others.
+ * Does NOT mutate any stored/backend value — for display only.
+ * @param amountUSD Raw USD value from the backend
+ * @param toCurrency Target SupportedCurrency
+ */
+export const convertCurrency = (
+  amountUSD: number,
+  toCurrency: SupportedCurrency
+): number => {
+  const rate = EXCHANGE_RATES[toCurrency];
+  const converted = amountUSD * rate;
+  if (ZERO_DECIMAL_CURRENCIES.has(toCurrency)) {
+    return Math.round(converted);
+  }
+  return Math.round(converted * 100) / 100;
 };
 
 /**

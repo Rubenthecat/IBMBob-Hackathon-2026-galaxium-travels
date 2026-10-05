@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Flight, StoredHold } from '../../types';
 import { Card, Button } from '../common';
 import { Zap, Plane, Crown, Rocket, Timer, CheckCircle, XCircle } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, convertCurrency } from '../../utils/formatters';
 import { confirmHold, releaseHold } from '../../services/api';
 import { removeHold } from '../../utils/holdStorage';
 import { useUser } from '../../hooks/useUserContext';
@@ -155,7 +155,7 @@ export const HoldCard = ({ storedHold, flight, onAction }: HoldCardProps) => {
             </div>
             <span className="text-lg font-bold text-star-white">
               {storedHold.totalPrice != null && !isNaN(storedHold.totalPrice)
-                ? formatCurrency(storedHold.totalPrice, currency, locale)
+                ? formatCurrency(convertCurrency(storedHold.totalPrice, currency), currency, locale)
                 : '—'}
             </span>
           </div>
