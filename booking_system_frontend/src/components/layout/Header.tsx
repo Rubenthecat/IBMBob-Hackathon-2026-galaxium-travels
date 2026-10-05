@@ -4,6 +4,7 @@ import { Rocket, User, LogOut } from 'lucide-react';
 import { useUser } from '../../hooks/useUserContext';
 import { Button } from '../common';
 import { UserIdentification } from '../user/UserIdentification';
+import { LocaleSettingsDropdown } from './LocaleSettingsDropdown';
 import { motion } from 'framer-motion';
 
 export const Header = () => {
@@ -69,6 +70,7 @@ export const Header = () => {
 
           {/* User Section */}
           <div className="flex items-center gap-4">
+            <LocaleSettingsDropdown />
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden md:flex items-center gap-2 text-sm">

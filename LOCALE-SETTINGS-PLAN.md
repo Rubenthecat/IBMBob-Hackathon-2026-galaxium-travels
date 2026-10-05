@@ -139,7 +139,7 @@ Give users a persistent, accessible control to change their locale preferences w
 - `lucide-react` is already a dependency (`Settings` icon available)
 - `motion` from `framer-motion` is already used in Header for animation — can animate the dropdown
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 
