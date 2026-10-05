@@ -1,3 +1,15 @@
+## Project Origin
+
+**Original Project:** [https://github.com/example-developer/hotel-booking-app](https://github.com/IBM/galaxium-travels)
+
+**Fork:** [https://github.com/RubenGuerra/hotel-booking-app](https://github.com/Rubenthecat/IBMBob-Hackathon-2026-galaxium-travels)
+
+This project is a fork of the original Galaxium Travels repository found on Github.
+IBM Bob was used to analyze the existing codebase, identify its architecture, and implement a new feature, allowing for the user to select their preferred currency
+
+
+
+
 # Galaxium Travels — Interplanetary Booking System
 
 A demo multi-service application for booking interplanetary space travel. Its purpose is to **showcase challenges agents face in a real enterprise-style codebase** — three polyglot services, cross-service workflows, a dual REST + MCP backend, and intentional architectural constraints that make it interesting to work with.
