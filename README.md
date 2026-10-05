@@ -9,3 +9,5 @@ IBM Bob was used to analyze the existing codebase, identify its architecture, an
 
 
 Created a Branch to implement features to enable Accessibility for Universal Audiences using the application
+
+An issue has appeared: The currency conversion when the user selects to receive a quote is not doing an actual calculation and instead just changing the Currency symbol identifier. Same issue is present when the user navigates to their booked flights and reviews the booking amount.
