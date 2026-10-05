@@ -10,6 +10,9 @@ IBM Bob was used to analyze the existing codebase, identify its architecture, an
 
 
 
+
+
+
 # Galaxium Travels — Interplanetary Booking System
 
 A demo multi-service application for booking interplanetary space travel. Its purpose is to **showcase challenges agents face in a real enterprise-style codebase** — three polyglot services, cross-service workflows, a dual REST + MCP backend, and intentional architectural constraints that make it interesting to work with.
