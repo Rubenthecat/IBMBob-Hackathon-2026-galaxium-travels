@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { confirmHold, releaseHold } from '../../services/api';
 import { removeHold } from '../../utils/holdStorage';
 import { useUser } from '../../hooks/useUserContext';
+import { useLocaleSettings } from '../../hooks/useLocaleSettingsContext';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
@@ -17,6 +18,7 @@ interface HoldCardProps {
 
 export const HoldCard = ({ storedHold, flight, onAction }: HoldCardProps) => {
   const { user } = useUser();
+  const { currency, locale } = useLocaleSettings();
   const [timeLeft, setTimeLeft] = useState(0);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
@@ -153,7 +155,7 @@ export const HoldCard = ({ storedHold, flight, onAction }: HoldCardProps) => {
             </div>
             <span className="text-lg font-bold text-star-white">
               {storedHold.totalPrice != null && !isNaN(storedHold.totalPrice)
-                ? formatCurrency(storedHold.totalPrice)
+                ? formatCurrency(storedHold.totalPrice, currency, locale)
                 : '—'}
             </span>
           </div>

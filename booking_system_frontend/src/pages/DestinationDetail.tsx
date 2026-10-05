@@ -9,6 +9,7 @@ import { getFlights } from '../services/api';
 import type { Flight } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
+import { useLocaleSettings } from '../hooks/useLocaleSettingsContext';
 
 // Animated section wrapper — staggered entrance matching site-wide style
 const Section = ({
@@ -39,6 +40,7 @@ const FactTile = ({ label, value }: { label: string; value: string }) => (
 );
 
 export const DestinationDetail = () => {
+  const { currency, locale, use12Hour, timezone } = useLocaleSettings();
   const { slug = '' } = useParams<{ slug: string }>();
   const destination: DestinationData | null = getDestinationBySlug(slug);
 
@@ -207,13 +209,13 @@ export const DestinationDetail = () => {
                       {flight.origin} → {flight.destination}
                     </p>
                     <p className="text-star-white/60 text-sm">
-                      {formatDate(flight.departure_time, 'MMM dd, yyyy')} · {formatTime(flight.departure_time)}
+                      {formatDate(flight.departure_time, 'MMM dd, yyyy', timezone)} · {formatTime(flight.departure_time, use12Hour, timezone)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-xs text-star-white/50">From</p>
-                      <p className={`font-bold ${accentColor}`}>{formatCurrency(flight.economy_price)}</p>
+                      <p className={`font-bold ${accentColor}`}>{formatCurrency(flight.economy_price, currency, locale)}</p>
                     </div>
                     <Link
                       to={`/flights?destination=${encodeURIComponent(name)}`}

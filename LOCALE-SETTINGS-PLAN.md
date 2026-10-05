@@ -107,7 +107,7 @@ Wire the locale context into every component that renders a price or time so tha
 4. Update `HoldCard.tsx` — same pattern for price.
 5. Update `DestinationDetail.tsx` — same pattern for price and time.
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 

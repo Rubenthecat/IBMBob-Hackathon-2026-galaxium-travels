@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, calculateDuration } from '../../utils/forma
 import { createQuote, createHold, confirmHold, releaseHold } from '../../services/api';
 import { storeHold, removeHold } from '../../utils/holdStorage';
 import { useUser } from '../../hooks/useUserContext';
+import { useLocaleSettings } from '../../hooks/useLocaleSettingsContext';
 import toast from 'react-hot-toast';
 
 type Step = 'select' | 'quote' | 'hold';
@@ -29,6 +30,7 @@ interface BookingModalProps {
 
 export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModalProps) => {
   const { user } = useUser();
+  const { currency, locale, timezone } = useLocaleSettings();
   const [step, setStep] = useState<Step>('select');
   const [selectedClass, setSelectedClass] = useState<SeatClass>('economy');
   const [isLoading, setIsLoading] = useState(false);
@@ -123,13 +125,13 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
         <div>
           <p className="text-xs text-star-white/60 mb-1">Departure</p>
           <p className="text-star-white font-medium">
-            {formatDate(flight.departure_time, 'MMM dd')}
+            {formatDate(flight.departure_time, 'MMM dd', timezone)}
           </p>
         </div>
         <div>
           <p className="text-xs text-star-white/60 mb-1">Arrival</p>
           <p className="text-star-white font-medium">
-            {formatDate(flight.arrival_time, 'MMM dd')}
+            {formatDate(flight.arrival_time, 'MMM dd', timezone)}
           </p>
         </div>
         <div>
@@ -331,13 +333,13 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
               <span className="text-sm text-star-white/70">{selectedClassData?.name} × 1</span>
             </div>
             <span className="text-star-white font-medium">
-              {formatCurrency(quote?.pricePerSeat || 0)}
+              {formatCurrency(quote?.pricePerSeat || 0, currency, locale)}
             </span>
           </div>
           <div className="border-t border-white/10 pt-3 flex items-center justify-between">
             <span className="font-semibold text-star-white">Total</span>
             <span className="text-xl font-bold text-alien-green">
-              {formatCurrency(quote?.totalPrice || 0)}
+              {formatCurrency(quote?.totalPrice || 0, currency, locale)}
             </span>
           </div>
           <p className="text-xs text-star-white/50">
@@ -404,7 +406,7 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
           <span className="text-white font-semibold">Total</span>
         </div>
         <span className="text-xl font-bold text-white">
-          {formatCurrency(quote?.totalPrice || 0)}
+          {formatCurrency(quote?.totalPrice || 0, currency, locale)}
         </span>
       </div>
 

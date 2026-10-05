@@ -5,6 +5,7 @@ import { formatCurrency, formatDate, formatTime, calculateDuration } from '../..
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { getDestinationByName } from '../../data/destinations';
+import { useLocaleSettings } from '../../hooks/useLocaleSettingsContext';
 
 interface FlightCardProps {
   flight: Flight;
@@ -12,6 +13,7 @@ interface FlightCardProps {
 }
 
 export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
+  const { currency, locale, use12Hour, timezone } = useLocaleSettings();
   const totalSeats = flight.economy_seats_available + flight.business_seats_available + flight.galaxium_seats_available;
   const isSoldOut = totalSeats === 0;
   const destData = getDestinationByName(flight.destination);
@@ -92,19 +94,19 @@ export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
             <div>
               <p className="text-xs text-star-white/60 mb-1">Departure</p>
               <p className="text-sm font-medium text-star-white">
-                {formatDate(flight.departure_time, 'MMM dd, yyyy')}
+                {formatDate(flight.departure_time, 'MMM dd, yyyy', timezone)}
               </p>
               <p className="text-lg font-bold text-cosmic-purple">
-                {formatTime(flight.departure_time)}
+                {formatTime(flight.departure_time, use12Hour, timezone)}
               </p>
             </div>
             <div>
               <p className="text-xs text-star-white/60 mb-1">Arrival</p>
               <p className="text-sm font-medium text-star-white">
-                {formatDate(flight.arrival_time, 'MMM dd, yyyy')}
+                {formatDate(flight.arrival_time, 'MMM dd, yyyy', timezone)}
               </p>
               <p className="text-lg font-bold text-cosmic-purple">
-                {formatTime(flight.arrival_time)}
+                {formatTime(flight.arrival_time, use12Hour, timezone)}
               </p>
             </div>
           </div>
@@ -139,7 +141,7 @@ export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
                     </div>
                     <div className="text-right">
                       <div className={`text-lg font-bold ${seatClass.color}`}>
-                        {formatCurrency(seatClass.price)}
+                        {formatCurrency(seatClass.price, currency, locale)}
                       </div>
                       <div className="flex items-center gap-1 text-xs">
                         <Users size={12} className={isLowSeats ? 'text-solar-orange' : 'text-star-white/60'} />
