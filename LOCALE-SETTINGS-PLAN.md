@@ -158,7 +158,7 @@ Confirm the feature works correctly end-to-end and that no existing tests are br
 2. Run `npm run build` in `booking_system_frontend/` — fix any type errors.
 3. Run `pytest` in `booking_system_backend/` — confirm no regressions.
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 
