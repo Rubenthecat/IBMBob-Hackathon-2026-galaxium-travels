@@ -49,7 +49,7 @@ Establish the shared state that every component will read for locale preferences
 - Provider is added in [`App.tsx`](booking_system_frontend/src/App.tsx) alongside the existing `UserProvider`
 - `localStorage` key: `galaxium_locale_settings`
 
-**Status:** `[x] done`
+**Status:** `[ ] pending`
 
 ---
 
@@ -77,7 +77,7 @@ Decouple the formatting functions from their hardcoded locale values. Each funct
 - date-fns is already installed (`^4.1.0` in package.json); check for date-fns-tz separately
 - `Intl.DateTimeFormat` can handle timezone conversion natively if date-fns-tz is absent
 
-**Status:** `[x] done`
+**Status:** `[ ] pending`
 
 ---
 

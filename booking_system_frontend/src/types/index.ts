@@ -73,6 +73,28 @@ export interface UserContextType {
   logout: () => void;
 }
 
+// Locale settings types
+export type SupportedCurrency =
+  | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'CHF' | 'CNY'
+  | 'INR' | 'BRL' | 'MXN' | 'SGD' | 'HKD' | 'NZD' | 'KRW';
+
+export interface LocaleSettings {
+  currency: SupportedCurrency;
+  locale: string;
+  use12Hour: boolean;
+  timezone: string;
+}
+
+export interface LocaleSettingsContextType {
+  currency: SupportedCurrency;
+  locale: string;
+  use12Hour: boolean;
+  timezone: string;
+  setCurrency: (currency: SupportedCurrency) => void;
+  setUse12Hour: (use12Hour: boolean) => void;
+  setTimezone: (timezone: string) => void;
+}
+
 // Java Inventory Hold Service types
 
 export interface Quote {
