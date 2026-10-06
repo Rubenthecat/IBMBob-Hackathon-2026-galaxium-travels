@@ -53,7 +53,7 @@
 - [`AGENTS.md`](AGENTS.md) — documents that Java 17/21 is required; Lombok does not support Java 22+.
 - [`start.sh`](start.sh) — thin wrapper at root that delegates to `scripts/local/start_locally.sh`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -94,7 +94,7 @@
 - [`booking_system_frontend/package.json`](booking_system_frontend/package.json) — Node dependencies.
 - [`AGENTS.md`](AGENTS.md) — confirms Java 17 or 21 required; Java 22+ breaks Lombok.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -118,7 +118,7 @@
 **Relevant Context:**
 - [`README.md`](README.md) — currently starts with "Project Origin" with no quick-start guidance.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 

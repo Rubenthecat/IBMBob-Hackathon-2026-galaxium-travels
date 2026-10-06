@@ -35,8 +35,6 @@ services:
       retries: 3
 
   java-service:
-    profiles:
-      - hold-service
     build: ./booking_system_inventory_hold_service
     platform: linux/amd64
     ports:
