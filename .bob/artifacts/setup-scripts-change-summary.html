@@ -229,7 +229,7 @@
     <div class="filename"><span class="badge badge-ci">CI</span> .github/workflows/setup-test.yml</div>
     <ul>
       <li>New GitHub Actions workflow — runs on every push or PR touching setup scripts or any service</li>
-      <li>Also triggerable manually from the GitHub Actions tab</li>
+      <li>Manually triggerable from the GitHub Actions tab with a dropdown to include/exclude the macOS job</li>
     </ul>
   </div>
 
@@ -239,23 +239,26 @@
 
   <table class="job-table">
     <thead>
-      <tr><th>Job</th><th>Runner</th><th>What it validates</th></tr>
+      <tr><th>Job</th><th>Runner</th><th>Trigger</th><th>What it validates</th></tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>Docker mode (Ubuntu)</strong></td>
         <td>ubuntu-latest</td>
+        <td>push, pull_request, manual</td>
         <td>Runs <code>docker compose up --build</code>, health-checks all 4 services: backend (:8001), frontend (:5173), Java Hold Service (:8082), postgres</td>
-      </tr>
-      <tr>
-        <td><strong>Docker mode (Windows)</strong></td>
-        <td>windows-latest</td>
-        <td>Same compose stack on a Windows runner — confirms Docker path in <code>setup.ps1</code> works cross-platform</td>
       </tr>
       <tr>
         <td><strong>Local mode (Ubuntu)</strong></td>
         <td>ubuntu-latest</td>
-        <td>Mirrors <code>setup.sh</code> local path exactly: apt-get installs, Python venv, pip install, npm install, starts backend + Java Hold Service natively, verifies both health endpoints respond</td>
+        <td>push, pull_request, manual</td>
+        <td>Mirrors <code>setup.sh</code> local path: apt-get installs, Python venv, pip install, npm install, starts backend + Java Hold Service natively, verifies both health endpoints respond</td>
+      </tr>
+      <tr>
+        <td><strong>Local mode (macOS)</strong></td>
+        <td>macos-latest</td>
+        <td>manual only</td>
+        <td>Validates macOS-specific paths in <code>setup.sh</code>: Homebrew installs (python@3.11, node, openjdk@21, maven), OpenJDK PATH fix via <code>brew --prefix</code>, Java version check, backend + Java Hold Service startup</td>
       </tr>
     </tbody>
   </table>
@@ -269,7 +272,7 @@
     <span class="trigger-tag">push → booking_system_frontend/**</span>
     <span class="trigger-tag">push → booking_system_inventory_hold_service/**</span>
     <span class="trigger-tag">pull_request (same paths)</span>
-    <span class="trigger-tag">workflow_dispatch (manual)</span>
+    <span class="trigger-tag">workflow_dispatch (manual) — includes macOS toggle</span>
   </div>
 
   
