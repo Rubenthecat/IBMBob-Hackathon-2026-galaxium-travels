@@ -4,7 +4,7 @@ A demo interplanetary flight-booking app that mimics a real enterprise system. I
 
 When you are asked to create a plan while in agent mode, do other things you need to do, like gathering data from a CLI and then explicitly switch to plan mode. 
 
-When creating planning documents, put them on the root level in all caps. 
+When creating planning documents, save them in the `Artifacts/` folder in all caps (e.g. `Artifacts/MY-PLAN.md`). Do not place plan files at the repository root.
 
 Before you start building anything look for information about tests and verification
 

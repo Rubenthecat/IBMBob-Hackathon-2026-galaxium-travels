@@ -1,8 +1,9 @@
 import type { Booking, Flight } from '../../types';
 import { Card, Button } from '../common';
 import { Plane, Calendar, CheckCircle, XCircle, Clock, Crown, Rocket } from 'lucide-react';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatCurrency, convertCurrency } from '../../utils/formatters';
 import { motion } from 'framer-motion';
+import { useLocaleSettings } from '../../hooks/useLocaleSettingsContext';
 
 interface BookingCardProps {
   booking: Booking;
@@ -12,6 +13,7 @@ interface BookingCardProps {
 }
 
 export const BookingCard = ({ booking, flight, onCancel, isCancelling }: BookingCardProps) => {
+  const { currency, locale, timezone } = useLocaleSettings();
   const getSeatClassIcon = () => {
     switch (booking.seat_class) {
       case 'business':
@@ -112,13 +114,13 @@ export const BookingCard = ({ booking, flight, onCancel, isCancelling }: Booking
               <div>
                 <p className="text-xs text-star-white/60 mb-1">Departure</p>
                 <p className="text-sm text-star-white font-medium">
-                  {formatDate(flight.departure_time)}
+                  {formatDate(flight.departure_time, undefined, timezone)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-star-white/60 mb-1">Arrival</p>
                 <p className="text-sm text-star-white font-medium">
-                  {formatDate(flight.arrival_time)}
+                  {formatDate(flight.arrival_time, undefined, timezone)}
                 </p>
               </div>
             </div>
@@ -136,7 +138,7 @@ export const BookingCard = ({ booking, flight, onCancel, isCancelling }: Booking
               <div className="flex items-center justify-between">
                 <span className="text-sm text-star-white/60">Price Paid</span>
                 <span className="text-lg font-bold text-star-white">
-                  {formatCurrency(booking.price_paid)}
+                  {formatCurrency(convertCurrency(booking.price_paid, currency), currency, locale)}
                 </span>
               </div>
             </div>
@@ -150,7 +152,7 @@ export const BookingCard = ({ booking, flight, onCancel, isCancelling }: Booking
         {/* Booking Time */}
         <div className="flex items-center gap-2 text-sm text-star-white/60 mb-4">
           <Calendar size={16} />
-          <span>Booked on {formatDate(booking.booking_time)}</span>
+          <span>Booked on {formatDate(booking.booking_time, undefined, timezone)}</span>
         </div>
 
         {/* Cancel Button */}

@@ -1,0 +1,294 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setup Scripts — Change Summary</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+    padding: 40px 20px 60px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 32px; }
+
+  h2 { font-size: 15px; font-weight: 700; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+  h3 { font-size: 13px; font-weight: 700; margin: 18px 0 6px; color: #1f2328; }
+
+  p { margin-bottom: 10px; color: #1f2328; }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .badge-new  { background: #dafbe1; color: #116329; }
+  .badge-mod  { background: #fff8c5; color: #7d4e00; }
+  .badge-ci   { background: #ddf4ff; color: #0969da; }
+
+  .file-block {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .file-block .filename {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .file-block ul { padding-left: 18px; }
+  .file-block li { margin-bottom: 4px; font-size: 13px; color: #1f2328; }
+
+  .flow {
+    display: flex;
+    gap: 0;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    flex: 1;
+    min-width: 140px;
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-right: none;
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+  .flow-step:last-child { border-right: 1px solid #e5e7eb; border-radius: 0 6px 6px 0; }
+  .flow-step:first-child { border-radius: 6px 0 0 6px; }
+  .flow-step .step-num { font-size: 18px; font-weight: 700; color: #3b82d4; display: block; margin-bottom: 4px; }
+  .flow-step .step-label { font-weight: 600; display: block; margin-bottom: 4px; }
+
+  .job-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+  .job-table th { background: #f7f8fa; padding: 8px 12px; text-align: left; border: 1px solid #e5e7eb; font-weight: 600; }
+  .job-table td { padding: 8px 12px; border: 1px solid #e5e7eb; vertical-align: top; }
+  .job-table tr:nth-child(even) td { background: #fafbfc; }
+
+  .trigger-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .trigger-tag {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+
+  .url-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .url-table th { background: #f7f8fa; padding: 7px 12px; text-align: left; border: 1px solid #e5e7eb; font-weight: 600; }
+  .url-table td { padding: 7px 12px; border: 1px solid #e5e7eb; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+
+  .note { background: #fff8c5; border-left: 3px solid #d4a72c; padding: 10px 14px; border-radius: 0 4px 4px 0; font-size: 13px; margin: 12px 0; }
+
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #57606a; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>🌌 Galaxium Travels — Setup Scripts</h1>
+  <p class="subtitle">Branch: <strong>User-Friendly-Dependency-Install-Scripts</strong>  ·  Summary of changes that make the repo runnable right after cloning</p>
+
+  
+  <h2>What Problem This Solves</h2>
+  <p>Before these changes, a developer who cloned the repo had to manually install Python, Node, Java 21, and Maven, figure out the right commands for their OS, copy <code>.env</code> files by hand, and know to pass <code>--profile hold-service</code> to Docker Compose to start the Java service. There was no single command to start everything.</p>
+  <p>These changes add a single bootstrap script per platform that handles all of that automatically.</p>
+
+  
+  <h2>How to Start the App After Cloning</h2>
+
+  <h3>macOS / Linux</h3>
+  <div class="file-block">
+    <div class="filename">./setup.sh</div>
+  </div>
+
+  <h3>Windows (PowerShell)</h3>
+  <div class="file-block">
+    <div class="filename">.\setup.ps1</div>
+  </div>
+  <div class="note">⚠️ Windows Local mode requires <strong>Windows 10 version 1709 or newer</strong> for <code>winget</code> (the auto-installer). Docker mode works on any Windows version that supports Docker Desktop.</div>
+
+  <h3>Already have Docker running? (any platform)</h3>
+  <div class="file-block">
+    <div class="filename">docker compose up --build</div>
+  </div>
+  <p>The Java Hold Service now starts automatically — no extra flags needed.</p>
+
+  
+  <h2>What the Scripts Do</h2>
+  <p>Both scripts follow the same flow:</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <span class="step-num">1</span>
+      <span class="step-label">Prompt</span>
+      Ask: Docker or Local?
+    </div>
+    <div class="flow-step">
+      <span class="step-num">2</span>
+      <span class="step-label">Check</span>
+      Verify required tools are present
+    </div>
+    <div class="flow-step">
+      <span class="step-num">3</span>
+      <span class="step-label">Install</span>
+      Auto-install anything missing
+    </div>
+    <div class="flow-step">
+      <span class="step-num">4</span>
+      <span class="step-label">Configure</span>
+      Create <code>.env</code> if absent
+    </div>
+    <div class="flow-step">
+      <span class="step-num">5</span>
+      <span class="step-label">Launch</span>
+      Start all services
+    </div>
+  </div>
+
+  <h3>Docker mode</h3>
+  <ul style="padding-left:18px;font-size:13px;margin-bottom:10px">
+    <li>Checks Docker binary is on PATH — prints install link if missing</li>
+    <li>Checks Docker daemon is running — prints clear instructions if not</li>
+    <li>Runs <code>docker compose up --build</code></li>
+  </ul>
+
+  <h3>Local mode — tool auto-install per platform</h3>
+  <table class="job-table">
+    <thead>
+      <tr><th>Tool</th><th>macOS (brew)</th><th>Linux (apt-get + sudo prompt)</th><th>Windows (winget)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Python 3</td><td>python3</td><td>python3, python3-venv</td><td>Python.Python.3.11</td></tr>
+      <tr><td>Node.js</td><td>node</td><td>nodejs, npm</td><td>OpenJS.NodeJS</td></tr>
+      <tr><td>Java 21</td><td>openjdk@21</td><td>openjdk-21-jdk</td><td>Microsoft.OpenJDK.21</td></tr>
+      <tr><td>Maven</td><td>maven</td><td>maven</td><td>Apache.Maven</td></tr>
+      <tr><td>curl</td><td>curl</td><td>curl</td><td><em>built-in</em></td></tr>
+      <tr><td>lsof</td><td>lsof</td><td>lsof</td><td><em>Get-NetTCPConnection</em></td></tr>
+    </tbody>
+  </table>
+
+  
+  <h2>Files Changed</h2>
+
+  <div class="file-block">
+    <div class="filename"><span class="badge badge-new">NEW</span> setup.sh</div>
+    <ul>
+      <li>macOS and Linux bootstrap script (227 lines)</li>
+      <li>OS detection — redirects Windows users to <code>setup.ps1</code></li>
+      <li>Docker path + Local path with Homebrew / apt-get auto-install</li>
+      <li>Linux: prompts for sudo before any <code>apt-get</code> call</li>
+      <li>macOS: handles Homebrew OpenJDK PATH quirk automatically</li>
+    </ul>
+  </div>
+
+  <div class="file-block">
+    <div class="filename"><span class="badge badge-new">NEW</span> setup.ps1</div>
+    <ul>
+      <li>Windows PowerShell equivalent (175 lines)</li>
+      <li>Same Docker/Local prompt</li>
+      <li>Uses <code>winget</code> for all tool installs</li>
+      <li>Uses <code>Get-NetTCPConnection</code> / <code>Stop-Process</code> for port cleanup (replaces Unix <code>lsof</code>)</li>
+      <li>Uses <code>Invoke-WebRequest</code> for health checks (replaces Unix <code>curl</code>)</li>
+    </ul>
+  </div>
+
+  <div class="file-block">
+    <div class="filename"><span class="badge badge-mod">MODIFIED</span> docker-compose.yml</div>
+    <ul>
+      <li>Removed <code>profiles: [hold-service]</code> from <code>java-service</code></li>
+      <li>Java Hold Service now starts with every <code>docker compose up</code> — no flags needed</li>
+    </ul>
+  </div>
+
+  <div class="file-block">
+    <div class="filename"><span class="badge badge-mod">MODIFIED</span> README.md</div>
+    <ul>
+      <li>New <strong>Quick Start</strong> section at the top of the file</li>
+      <li>One-command instructions for macOS/Linux, Windows, and Docker</li>
+      <li>Service URL reference table</li>
+      <li>Windows 10 1709+ note for winget</li>
+    </ul>
+  </div>
+
+  <div class="file-block">
+    <div class="filename"><span class="badge badge-ci">CI</span> .github/workflows/setup-test.yml</div>
+    <ul>
+      <li>New GitHub Actions workflow — runs on every push or PR touching setup scripts or any service</li>
+      <li>Manually triggerable from the GitHub Actions tab with a dropdown to include/exclude the macOS job</li>
+    </ul>
+  </div>
+
+  
+  <h2>CI Workflow — 3 Jobs</h2>
+  <p>The workflow validates the scripts on real, clean GitHub-hosted runners so regressions are caught before they reach anyone cloning the repo.</p>
+
+  <table class="job-table">
+    <thead>
+      <tr><th>Job</th><th>Runner</th><th>Trigger</th><th>What it validates</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Docker mode (Ubuntu)</strong></td>
+        <td>ubuntu-latest</td>
+        <td>push, pull_request, manual</td>
+        <td>Runs <code>docker compose up --build</code>, health-checks all 4 services: backend (:8001), frontend (:5173), Java Hold Service (:8082), postgres</td>
+      </tr>
+      <tr>
+        <td><strong>Local mode (Ubuntu)</strong></td>
+        <td>ubuntu-latest</td>
+        <td>push, pull_request, manual</td>
+        <td>Mirrors <code>setup.sh</code> local path: apt-get installs, Python venv, pip install, npm install, starts backend + Java Hold Service natively, verifies both health endpoints respond</td>
+      </tr>
+      <tr>
+        <td><strong>Local mode (macOS)</strong></td>
+        <td>macos-latest</td>
+        <td>manual only</td>
+        <td>Validates macOS-specific paths in <code>setup.sh</code>: Homebrew installs (python@3.11, node, openjdk@21, maven), OpenJDK PATH fix via <code>brew --prefix</code>, Java version check, backend + Java Hold Service startup</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Workflow triggers</h3>
+  <div class="trigger-list">
+    <span class="trigger-tag">push → setup.sh</span>
+    <span class="trigger-tag">push → setup.ps1</span>
+    <span class="trigger-tag">push → docker-compose.yml</span>
+    <span class="trigger-tag">push → booking_system_backend/**</span>
+    <span class="trigger-tag">push → booking_system_frontend/**</span>
+    <span class="trigger-tag">push → booking_system_inventory_hold_service/**</span>
+    <span class="trigger-tag">pull_request (same paths)</span>
+    <span class="trigger-tag">workflow_dispatch (manual) — includes macOS toggle</span>
+  </div>
+
+  
+  <h2>Service URLs After a Successful Start</h2>
+  <table class="url-table">
+    <thead><tr><th>URL</th><th>Service</th></tr></thead>
+    <tbody>
+      <tr><td>http://localhost:5173</td><td>Frontend</td></tr>
+      <tr><td>http://localhost:8001</td><td>Backend API</td></tr>
+      <tr><td>http://localhost:8001/docs</td><td>API Docs (Swagger)</td></tr>
+      <tr><td>http://localhost:8082</td><td>Java Hold Service (Docker)</td></tr>
+      <tr><td>http://localhost:8080</td><td>Java Hold Service (Local)</td></tr>
+    </tbody>
+  </table>
+
+  <footer>Made with IBM Bob</footer>
+</div>
+</body>
+</html>
