@@ -38,8 +38,3 @@ The scripts detect your platform, prompt for a mode, handle all dependency insta
 
 This project is a fork of the original Galaxium Travels repository found on Github.
 IBM Bob was used to analyze the existing codebase, identify its architecture, and implement a new feature, allowing for the user to select their preferred currency
-
-
-Created a Branch to implement features to enable Accessibility for Universal Audiences using the application
-
-An issue has appeared: The currency conversion when the user selects to receive a quote is not doing an actual calculation and instead just changing the Currency symbol identifier. Same issue is present when the user navigates to their booked flights and reviews the booking amount.
