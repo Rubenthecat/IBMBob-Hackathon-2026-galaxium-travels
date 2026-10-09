@@ -1,0 +1,311 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bug Report: setup.ps1 Local Mode Failures</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+    padding: 40px 24px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+
+  /* Header */
+  .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 28px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #1f2328; margin-bottom: 6px; }
+  .header .subtitle { color: #57606a; font-size: 13px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; margin-top: 16px; }
+  .meta-item { font-size: 13px; }
+  .meta-item span:first-child { color: #57606a; margin-right: 6px; }
+  .meta-item span:last-child { font-weight: 600; }
+
+  /* Status badge */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-resolved { background: #dcfce7; color: #166534; }
+  .badge-bug { background: #fee2e2; color: #991b1b; }
+  .badge-warning { background: #fef9c3; color: #854d0e; }
+
+  /* Sections */
+  section { margin-bottom: 32px; }
+  h2 { font-size: 15px; font-weight: 700; color: #1f2328; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 14px; }
+  h3 { font-size: 13px; font-weight: 700; color: #1f2328; margin: 16px 0 6px; }
+  p { margin-bottom: 10px; color: #1f2328; }
+  p:last-child { margin-bottom: 0; }
+
+  /* Bug cards */
+  .bug-card { border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 20px; overflow: hidden; }
+  .bug-card-header { background: #f7f8fa; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e7eb; }
+  .bug-card-header .num { font-size: 12px; font-weight: 700; color: #57606a; min-width: 24px; }
+  .bug-card-header .title { font-weight: 700; font-size: 14px; flex: 1; }
+  .bug-card-body { padding: 14px 16px; }
+  .bug-card-body p { margin-bottom: 8px; font-size: 13px; }
+  .bug-card-body p:last-child { margin-bottom: 0; }
+  .field-label { font-weight: 600; color: #57606a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; margin-top: 10px; }
+  .field-label:first-child { margin-top: 0; }
+
+  /* Code */
+  code { font-family: "Cascadia Code", "Consolas", "Menlo", monospace; font-size: 12px; background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 3px; padding: 1px 5px; color: #0550ae; }
+  pre { background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 5px; padding: 12px 14px; font-family: "Cascadia Code", "Consolas", "Menlo", monospace; font-size: 12px; color: #1f2328; overflow-x: auto; margin: 8px 0; line-height: 1.5; }
+  pre .comment { color: #57606a; font-style: italic; }
+  pre .added { color: #1a7f37; }
+  pre .removed { color: #cf222e; }
+
+  /* Steps */
+  ol.steps { padding-left: 20px; }
+  ol.steps li { margin-bottom: 8px; font-size: 13px; }
+  ol.steps li strong { color: #1f2328; }
+
+  /* Roadblocks */
+  .roadblock { background: #fff8f1; border-left: 3px solid #f97316; border-radius: 0 5px 5px 0; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
+  .roadblock strong { display: block; margin-bottom: 3px; color: #9a3412; }
+
+  /* Test results */
+  .test-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .test-row:last-child { border-bottom: none; }
+  .test-icon { font-size: 13px; min-width: 16px; margin-top: 1px; }
+  .test-icon.pass { color: #1a7f37; font-weight: 700; }
+  .test-icon.fail { color: #cf222e; font-weight: 700; }
+  .test-body strong { display: block; color: #1f2328; margin-bottom: 1px; }
+  .test-body span { color: #57606a; }
+
+  /* Summary table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th { text-align: left; padding: 7px 10px; background: #f7f8fa; border: 1px solid #e5e7eb; font-weight: 600; color: #57606a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 7px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  /* Final state */
+  .outcome-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px 16px; font-size: 13px; }
+  .outcome-box strong { color: #166534; display: block; margin-bottom: 6px; font-size: 14px; }
+
+  /* Footer */
+  .footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #57606a; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  
+  <div class="header">
+    <h1>Bug Report: <code>setup.ps1</code> Local Mode Failures</h1>
+    <div class="subtitle">Galaxium Travels — Windows Local Setup (Option 2)</div>
+    <div class="meta-grid">
+      <div class="meta-item"><span>File:</span><span>setup.ps1</span></div>
+      <div class="meta-item"><span>Status:</span><span><span class="badge badge-resolved">Resolved</span></span></div>
+      <div class="meta-item"><span>Branch:</span><span>Windows-Setup-Fixes</span></div>
+      <div class="meta-item"><span>Affected Mode:</span><span>Option 2 — Local</span></div>
+      <div class="meta-item"><span>Platform:</span><span>Windows 10/11, PowerShell 5.1</span></div>
+      <div class="meta-item"><span>Bugs Fixed:</span><span>4</span></div>
+    </div>
+  </div>
+
+  
+  <section>
+    <h2>Summary</h2>
+    <p>Running <code>.\setup.ps1</code> with option <strong>2 (Local)</strong> on Windows resulted in two user-visible symptoms: the backend server would shut down approximately 60 seconds after a successful start, and the frontend (Vite/React) never launched. The <code>backend.log.err</code> file showed no errors, making the failure appear silent. Investigation revealed four compounding bugs, all confined to <code>setup.ps1</code>. No backend or frontend application code was involved.</p>
+  </section>
+
+  
+  <section>
+    <h2>Observed Symptoms</h2>
+    <div class="test-row">
+      <div class="test-icon fail">✗</div>
+      <div class="test-body"><strong>Backend shuts down ~60 seconds after a healthy start</strong><span>Terminal displays an error. <code>backend.log.err</code> shows normal startup lines only — no application error.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon fail">✗</div>
+      <div class="test-body"><strong>Frontend never starts</strong><span>No Vite output. <code>frontend.log.err</code> was never created.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon fail">✗</div>
+      <div class="test-body"><strong>Health check hangs indefinitely</strong><span>On later runs, <code>Waiting for backend to start...</code> appeared and the script never progressed — requiring a manual kill after 5+ minutes.</span></div>
+    </div>
+  </section>
+
+  
+  <section>
+    <h2>Root Causes</h2>
+
+    
+    <div class="bug-card">
+      <div class="bug-card-header">
+        <span class="num">#1</span>
+        <span class="title">Wait-Process race condition kills the backend</span>
+        <span class="badge badge-bug">Critical</span>
+      </div>
+      <div class="bug-card-body">
+        <div class="field-label">Location</div>
+        <p>setup.ps1 — <code>Wait-Process -Id $backendProc.Id, $frontendProc.Id</code></p>
+        <div class="field-label">Cause</div>
+        <p><code>Wait-Process</code> with multiple IDs unblocks as soon as <em>any</em> of the listed processes exits. <code>$frontendProc</code> held the PID of a short-lived <code>npm.cmd</code> / <code>cmd.exe</code> launcher wrapper, which exits within seconds of handing off to Node.js. When that wrapper exited, <code>Wait-Process</code> returned, the <code>finally</code> block ran, and <code>Stop-Process -Force</code> killed the healthy backend.</p>
+        <div class="field-label">Fix</div>
+        <p>Replaced <code>Wait-Process</code> with a <code>while ($true)</code> polling loop that checks <code>$proc.HasExited</code> every 2 seconds, with <code>catch [PipelineStoppedException]</code> to handle Ctrl+C gracefully.</p>
+      </div>
+    </div>
+
+    
+    <div class="bug-card">
+      <div class="bug-card-header">
+        <span class="num">#2</span>
+        <span class="title">npm.cmd wrapper PID — frontend process not tracked</span>
+        <span class="badge badge-bug">Critical</span>
+      </div>
+      <div class="bug-card-body">
+        <div class="field-label">Location</div>
+        <p>setup.ps1 — <code>Start-Process -FilePath "npm" -ArgumentList "run", "dev"</code></p>
+        <div class="field-label">Cause</div>
+        <p>On Windows, <code>npm</code> resolves to <code>npm.cmd</code>, a batch script. <code>Start-Process</code> cannot invoke <code>.cmd</code> files directly without routing through <code>cmd.exe</code>. Even when routed through <code>cmd.exe</code>, the returned PID is the short-lived launcher, not the long-running Vite/Node.js process. This made <code>$frontendProc.HasExited</code> become <code>true</code> within seconds, immediately triggering the crash-detection logic and killing the backend.</p>
+        <div class="field-label">Fix</div>
+        <p>Replaced all launcher wrappers by invoking <code>node.exe</code> directly with the Vite entry point: <code>node_modules\vite\bin\vite.js</code>. This was discovered by reading the contents of <code>node_modules\.bin\vite.cmd</code>, which reveals the real underlying command. <code>Start-Process</code> then holds the actual long-running Node PID.</p>
+      </div>
+    </div>
+
+    
+    <div class="bug-card">
+      <div class="bug-card-header">
+        <span class="num">#3</span>
+        <span class="title">Spaces in workspace path break Node.js argument parsing</span>
+        <span class="badge badge-bug">Critical</span>
+      </div>
+      <div class="bug-card-body">
+        <div class="field-label">Location</div>
+        <p>setup.ps1 — <code>Start-Process -FilePath $nodeExe -ArgumentList $viteScript</code></p>
+        <div class="field-label">Cause</div>
+        <p>The workspace path <code>E:\Coding\IBM Bob Hackathon 2026\...</code> contains spaces. When <code>$viteScript</code> was passed to <code>-ArgumentList</code> without quoting, PowerShell word-split the path on the first space. Node.js received <code>E:\Coding\IBM</code> as the module path and immediately exited with <code>Error: Cannot find module 'E:\Coding\IBM'</code>. Because the process exited before writing anything, <code>frontend.log.err</code> was never created and the failure was invisible.</p>
+        <div class="field-label">Diagnosis</div>
+        <pre>Error: Cannot find module 'E:\Coding\IBM'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)
+    ...
+Node.js v24.19.0</pre>
+        <div class="field-label">Fix</div>
+        <p>Wrapped the script path in escaped quotes: <code>-ArgumentList "`"$viteScript`""</code> so Node receives it as a single argument regardless of spaces in the path.</p>
+      </div>
+    </div>
+
+    
+    <div class="bug-card">
+      <div class="bug-card-header">
+        <span class="num">#4</span>
+        <span class="title">Invoke-WebRequest deadlocks with redirected child pipes</span>
+        <span class="badge badge-bug">Critical</span>
+      </div>
+      <div class="bug-card-body">
+        <div class="field-label">Location</div>
+        <p>setup.ps1 — both backend and frontend health-check loops using <code>Invoke-WebRequest</code></p>
+        <div class="field-label">Cause</div>
+        <p>In Windows PowerShell 5.1, <code>Invoke-WebRequest</code> deadlocks when run in the same process as a child whose stdout/stderr pipes are being redirected via <code>-RedirectStandardOutput/-Error</code>. The pipe buffer fills as Uvicorn writes startup logs; PowerShell's HTTP client is never scheduled because the thread is blocked trying to drain the pipe. The health-check loop hung permanently — the script never printed <code>[ERR]</code> or <code>[OK]</code>, it just stopped responding. This required a forced terminal kill after 5+ minutes.</p>
+        <div class="field-label">Fix</div>
+        <p>Replaced both <code>Invoke-WebRequest</code> health checks with <code>curl.exe</code>, which ships with Windows 10+ and runs as a fully separate process with no shared pipe handles:</p>
+        <pre><span class="removed">- $resp = Invoke-WebRequest -Uri "http://localhost:8001/" -UseBasicParsing -TimeoutSec 2</span>
+<span class="added">+ $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 2 "http://localhost:8001/" 2&gt;$null</span>
+<span class="added">+ if ($code -match '^\d+$' -and [int]$code -lt 500) { $backendReady = $true; break }</span></pre>
+      </div>
+    </div>
+
+  </section>
+
+  
+  <section>
+    <h2>Remediation Steps (in order applied)</h2>
+    <ol class="steps">
+      <li><strong>Replaced <code>Start-Process -FilePath "npm"</code> with <code>cmd.exe /c npm run dev</code></strong> and added stdout/stderr log redirection for the frontend, matching the backend log pattern.</li>
+      <li><strong>Replaced <code>Wait-Process</code> with a polling <code>while</code> loop</strong> checking <code>$proc.HasExited</code> every 2 seconds. Added <code>catch [PipelineStoppedException]</code> for clean Ctrl+C handling. Log files are now only deleted on a clean exit — on crashes they are preserved for inspection.</li>
+      <li><strong>Replaced the fixed 3-second <code>Start-Sleep</code></strong> for the frontend with a 15×2s health-check loop (matching the backend pattern), so the script only declares success when Vite is actually serving.</li>
+      <li><strong>Replaced <code>cmd.exe /c npm run dev</code> with direct <code>node.exe</code> invocation</strong> using <code>node_modules\vite\bin\vite.js</code>, discovered by inspecting <code>node_modules\.bin\vite.cmd</code>. This gives <code>Start-Process</code> the real long-running PID.</li>
+      <li><strong>Added escaped quotes around the Vite script path</strong> (<code>"`"$viteScript`""</code>) to handle workspace paths containing spaces.</li>
+      <li><strong>Replaced both <code>Invoke-WebRequest</code> health checks with <code>curl.exe</code></strong> to eliminate the pipe-deadlock hang in PowerShell 5.1.</li>
+    </ol>
+  </section>
+
+  
+  <section>
+    <h2>Roadblocks Encountered</h2>
+
+    <div class="roadblock">
+      <strong>Log files cleaned up before inspection</strong>
+      The original <code>finally</code> block deleted all log files unconditionally — even on crash. This meant <code>frontend.log.err</code> never survived to be read. Fixed by only deleting logs when <code>$cleanExit = $true</code> (Ctrl+C path).
+    </div>
+
+    <div class="roadblock">
+      <strong>Each fix exposed the next hidden bug</strong>
+      Fixing the <code>Wait-Process</code> race caused the npm wrapper PID issue to become visible. Fixing the npm wrapper exposed the spaces-in-path crash. Fixing that exposed the <code>Invoke-WebRequest</code> deadlock. Each bug had been masking the next.
+    </div>
+
+    <div class="roadblock">
+      <strong>backend.log.err showed a clean start — misleading diagnosis</strong>
+      Because log files persisted from prior successful runs and were not overwritten, the log appeared to show a healthy backend. Multiple runs had to be compared by counting <code>GET /</code> hits before confirming the backend was healthy when it was being killed.
+    </div>
+
+    <div class="roadblock">
+      <strong>Invoke-WebRequest deadlock required forced terminal kill</strong>
+      The deadlock produced no output and no timeout — the PowerShell window became completely unresponsive. The test command had to be cancelled manually after 5+ minutes. This made it the hardest bug to confirm, as the symptom (script hangs silently) was identical to a slow startup.
+    </div>
+
+    <div class="roadblock">
+      <strong>Spaces-in-path failure produced no log evidence</strong>
+      Node.js exited before writing a single byte to <code>frontend.log.err</code>, so the log file was never created. The bug was only found by running the <code>Start-Process</code> call in isolation in a diagnostic terminal and reading the stderr output directly.
+    </div>
+  </section>
+
+  
+  <section>
+    <h2>How It Was Tested</h2>
+    <div class="test-row">
+      <div class="test-icon pass">✓</div>
+      <div class="test-body"><strong>Isolated Start-Process + node.exe diagnostic</strong><span>Ran the exact <code>Start-Process</code> invocation in a standalone PowerShell session. First run (no quotes) produced <code>Error: Cannot find module 'E:\Coding\IBM'</code> in stderr. Second run (with escaped quotes) produced <code>VITE v7.3.6 ready in 779 ms — Local: http://localhost:5173/</code> with <code>HasExited: False</code> after 6 seconds.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon pass">✓</div>
+      <div class="test-body"><strong>curl.exe health check against live backend</strong><span>Started backend via <code>Start-Process</code>, then ran the exact health-check loop from the updated script. Poll 1 returned <code>http_code=200</code> — <code>[OK] Backend health check passed</code> — with no hang and no deadlock. Completed in under 2 seconds.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon pass">✓</div>
+      <div class="test-body"><strong>Full end-to-end script run</strong><span>Ran <code>.\setup.ps1</code> (Option 2). Backend and frontend both started. <code>backend.log</code> recorded real application traffic: <code>GET /flights</code>, <code>POST /register</code>, <code>POST /quotes</code> — confirming the full stack is operational.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon pass">✓</div>
+      <div class="test-body"><strong>Confirmed IWR deadlock vs curl.exe isolation</strong><span>Ran <code>Invoke-WebRequest</code> against a live backend in a session with <code>$ErrorActionPreference = "Stop"</code> and redirected child pipes active — confirmed it hung indefinitely. Replaced with <code>curl.exe</code> in same conditions — returned immediately with the correct status code.</span></div>
+    </div>
+    <div class="test-row">
+      <div class="test-icon pass">✓</div>
+      <div class="test-body"><strong>Dependency audit</strong><span>Verified all 12 packages in <code>requirements.txt</code> against installed <code>.venv</code> packages. All versions matched exactly. No application-level changes were needed.</span></div>
+    </div>
+  </section>
+
+  
+  <section>
+    <h2>Change Summary</h2>
+    <table>
+      <thead>
+        <tr><th>Lines</th><th>Change</th><th>Bug Fixed</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>~229–231</td><td>npm install routed via <code>cmd.exe /c</code></td><td>#2</td></tr>
+        <tr><td>~234–255</td><td>Frontend launched as <code>node.exe vite.js</code> with quoted path</td><td>#2, #3</td></tr>
+        <tr><td>~199–217</td><td>Backend health check replaced with <code>curl.exe</code></td><td>#4</td></tr>
+        <tr><td>~259–278</td><td>Frontend health check replaced with <code>curl.exe</code>; replaces fixed sleep</td><td>#4</td></tr>
+        <tr><td>~292–326</td><td><code>Wait-Process</code> replaced with <code>HasExited</code> polling loop</td><td>#1</td></tr>
+        <tr><td>~315–325</td><td>Logs only deleted on clean Ctrl+C exit (<code>$cleanExit</code> flag)</td><td>Diagnostic</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  
+  <section>
+    <h2>Final State</h2>
+    <div class="outcome-box">
+      <strong>All services operational</strong>
+      <code>backend.log</code> from the latest run confirms full stack activity: <code>GET /flights 200</code>, <code>POST /register 200</code>, <code>POST /quotes 200</code>. Backend running on <code>http://localhost:8001</code>, frontend on <code>http://localhost:5173</code>. No application source files were modified — all four fixes are confined to <code>setup.ps1</code>.
+    </div>
+  </section>
+
+  <div class="footer">Made with IBM Bob</div>
+</div>
+</body>
+</html>
