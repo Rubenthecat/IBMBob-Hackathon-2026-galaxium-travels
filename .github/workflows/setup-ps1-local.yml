@@ -1,0 +1,119 @@
+name: setup.ps1 — Local Mode (Windows)
+
+# Runs on every change to setup.ps1 and can be triggered manually.
+# Two jobs:
+#   1. syntax  — PS 5.1 parse check (~30 s, cheap)
+#   2. integration — runs setup.ps1 -CI on a real Windows runner and asserts
+#                    all three services respond on their expected ports (~10 min)
+
+on:
+  push:
+    paths:
+      - 'setup.ps1'
+  pull_request:
+    paths:
+      - 'setup.ps1'
+  workflow_dispatch:
+
+jobs:
+  # ── Job 1: PS 5.1 syntax parse check (~30 s) ────────────────────────────────
+  syntax:
+    name: Syntax (PS 5.1 parse check)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Force powershell (PS 5.1), not pwsh (PS 7). The ?. null-conditional
+      # regression documented in BOB-003 would not be caught under pwsh.
+      - name: Parse check
+        shell: powershell
+        run: |
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              "$env:GITHUB_WORKSPACE\setup.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+          }
+          Write-Host "Parse OK — 0 syntax errors"
+
+  # ── Job 2: integration run (~10 min) ─────────────────────────────────────────
+  integration:
+    name: Integration — Local mode
+    runs-on: windows-latest
+    needs: syntax
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pre-install all three runtimes so the winget branch in Require-Tool is
+      # bypassed (winget silent install is unreliable on GHA runners). The
+      # script's Get-Command checks still exercise the detection logic.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'microsoft'   # matches winget id Microsoft.OpenJDK.21
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Verify prerequisites on PATH
+        shell: powershell
+        run: |
+          python --version
+          node --version
+          java -version
+          mvn --version
+
+      # Pipe "2" to answer the "Enter your choice [1 or 2]" prompt.
+      # -CI skips the keep-alive loop so the script exits once all three
+      # services are healthy instead of blocking indefinitely.
+      - name: Run setup.ps1 (Option 2 — Local, -CI)
+        shell: powershell
+        timeout-minutes: 15
+        run: |
+          "2" | powershell -NonInteractive -NoProfile -File setup.ps1 -CI
+
+      # Verify each service independently. setup.ps1 already health-checked
+      # them internally, but this step catches any startup race from the pipe
+      # and gives CI a concrete pass/fail signal per port.
+      - name: Assert all three services healthy
+        shell: powershell
+        run: |
+          $services = @(
+              @{ Name = "Backend";           Url = "http://localhost:8001/" },
+              @{ Name = "Java Hold Service"; Url = "http://localhost:8080/api/v1/health" },
+              @{ Name = "Frontend";          Url = "http://localhost:5173/" }
+          )
+          foreach ($svc in $services) {
+              $ok = $false
+              for ($i = 1; $i -le 10; $i++) {
+                  $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 3 $svc.Url 2>$null
+                  if ($code -match '^\d+$' -and [int]$code -lt 500) { $ok = $true; break }
+                  Start-Sleep -Seconds 3
+              }
+              if (-not $ok) {
+                  Write-Error "$($svc.Name) did not respond on $($svc.Url)"
+                  exit 1
+              }
+              Write-Host "[OK] $($svc.Name) at $($svc.Url)"
+          }
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: |
+            booking_system_backend/backend.log.err
+            booking_system_inventory_hold_service/java.log.err
+            booking_system_frontend/frontend.log.err
+          if-no-files-found: ignore

@@ -1,6 +1,12 @@
 # setup.ps1 - First-run bootstrap for Galaxium Travels (Windows)
 # Prompts for Docker or Local mode, installs missing tools via winget, then launches the app.
 # Requires: Windows 10 version 1709 or newer (for winget support in Local mode)
+#
+# Flags:
+#   -CI   Skip the keep-alive loop after all services are healthy. Used by CI
+#         workflows to exit cleanly once health checks pass instead of blocking.
+
+param([switch]$CI)
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -335,7 +341,6 @@ Write-Host "   Hold Service: http://localhost:8080"
 Write-Host "   Frontend:     http://localhost:5173"
 Write-Host "   API Docs:     http://localhost:8001/docs"
 Write-Host ""
-Write-Host "Press Ctrl+C to stop. Backend log: booking_system_backend\backend.log.err"
 Write-Host "======================================================="
 
 # Keep the script alive until Ctrl+C or until a child process crashes.
@@ -343,6 +348,14 @@ Write-Host "======================================================="
 # short-lived launchers whose PID exits seconds after spawning Node —
 # Wait-Process on those PIDs would unblock immediately and kill everything.
 # By running node.exe directly above, $frontendProc holds the real Vite PID.
+#
+# In -CI mode the keep-alive loop is skipped entirely. All three services are
+# already confirmed healthy by this point; the CI workflow performs its own
+# health assertions and is responsible for process cleanup.
+if ($CI) {
+    exit 0
+}
+
 $cleanExit = $false
 try {
     while ($true) {
