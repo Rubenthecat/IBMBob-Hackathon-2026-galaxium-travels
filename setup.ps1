@@ -73,10 +73,6 @@ if ($mode -eq "docker") {
     Write-Host "  Frontend:  http://localhost:5173"
     Write-Host "  API Docs:  http://localhost:8001/docs"
     Write-Host ""
-    Write-Host "To also start the Java Hold Service, run:"
-    Write-Host "  docker compose --profile hold-service up --build"
-    Write-Host ""
-
     Set-Location $ScriptDir
     docker compose up --build
     exit $LASTEXITCODE
@@ -218,6 +214,54 @@ if (-not $backendReady) {
 }
 Write-Green "Backend started on http://localhost:8001"
 
+# ── Start Java Hold Service ───────────────────────────────────────────────────
+Write-Blue "`nStarting Java Hold Service..."
+$javaDir    = Join-Path $ScriptDir "booking_system_inventory_hold_service"
+$javaLog    = Join-Path $javaDir "java.log"
+$javaErrLog = Join-Path $javaDir "java.log.err"
+
+# mvn is a .cmd script on Windows — Start-Process requires the full name.
+$mvnCmd = $null
+$_mvn = Get-Command mvn.cmd -ErrorAction SilentlyContinue
+if ($_mvn) { $mvnCmd = $_mvn.Source }
+if (-not $mvnCmd) {
+    $_mvn = Get-Command mvn -ErrorAction SilentlyContinue
+    if ($_mvn) { $mvnCmd = $_mvn.Source }
+}
+if (-not $mvnCmd) {
+    Write-Red "mvn not found on PATH. Please install Maven and re-run."
+    Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+# Inject PYTHON_BACKEND_URL so the hold service can reach the Python backend.
+$env:PYTHON_BACKEND_URL = "http://localhost:8001"
+
+$javaProc = Start-Process -FilePath $mvnCmd `
+    -ArgumentList "-q", "spring-boot:run" `
+    -RedirectStandardOutput $javaLog -RedirectStandardError $javaErrLog `
+    -WorkingDirectory $javaDir -NoNewWindow -PassThru
+
+# Maven startup is slow — allow up to 60 s (30 × 2 s)
+Write-Host "Waiting for Java Hold Service to start..."
+$javaReady = $false
+for ($i = 1; $i -le 30; $i++) {
+    Start-Sleep -Seconds 2
+    $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 2 "http://localhost:8080/api/v1/health" 2>$null
+    if ($code -match '^\d+$' -and [int]$code -lt 500) {
+        $javaReady = $true
+        break
+    }
+}
+
+if (-not $javaReady) {
+    Write-Red "Java Hold Service failed to start. Check booking_system_inventory_hold_service\java.log.err for errors."
+    Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $javaProc.Id   -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+Write-Green "Java Hold Service started on http://localhost:8080"
+
 # ── Start Frontend ────────────────────────────────────────────────────────────
 Write-Blue "`nStarting Frontend Server..."
 $frontendDir    = Join-Path $ScriptDir "booking_system_frontend"
@@ -243,11 +287,13 @@ $viteScript = Join-Path $frontendDir "node_modules\vite\bin\vite.js"
 if (-not $nodeExe) {
     Write-Red "node.exe not found on PATH. Please install Node.js and re-run."
     Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $javaProc.Id   -Force -ErrorAction SilentlyContinue
     exit 1
 }
 if (-not (Test-Path $viteScript)) {
     Write-Red "Vite not found at $viteScript. Run 'npm install' in booking_system_frontend and re-run."
     Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $javaProc.Id   -Force -ErrorAction SilentlyContinue
     exit 1
 }
 # The vite script path may contain spaces (e.g. "IBM Bob Hackathon 2026").
@@ -272,6 +318,7 @@ for ($i = 1; $i -le 15; $i++) {
 if (-not $frontendReady) {
     Write-Red "Frontend failed to start. Check booking_system_frontend\frontend.log.err for errors."
     Stop-Process -Id $backendProc.Id  -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $javaProc.Id     -Force -ErrorAction SilentlyContinue
     Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue
     exit 1
 }
@@ -283,9 +330,10 @@ Write-Host ""
 Write-Host "======================================================="
 Write-Host "Galaxium Travels is running!" -ForegroundColor White
 Write-Host ""
-Write-Host "   Backend:   http://localhost:8001"
-Write-Host "   Frontend:  http://localhost:5173"
-Write-Host "   API Docs:  http://localhost:8001/docs"
+Write-Host "   Backend:      http://localhost:8001"
+Write-Host "   Hold Service: http://localhost:8080"
+Write-Host "   Frontend:     http://localhost:5173"
+Write-Host "   API Docs:     http://localhost:8001/docs"
 Write-Host ""
 Write-Host "Press Ctrl+C to stop. Backend log: booking_system_backend\backend.log.err"
 Write-Host "======================================================="
@@ -303,6 +351,10 @@ try {
             Write-Red "Backend process exited unexpectedly. Check booking_system_backend\backend.log.err"
             break
         }
+        if ($javaProc.HasExited) {
+            Write-Red "Java Hold Service exited unexpectedly. Check booking_system_inventory_hold_service\java.log.err"
+            break
+        }
         if ($frontendProc.HasExited) {
             Write-Red "Frontend process exited unexpectedly. Check booking_system_frontend\frontend.log.err"
             break
@@ -313,12 +365,15 @@ try {
     $cleanExit = $true
 } finally {
     Stop-Process -Id $backendProc.Id  -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $javaProc.Id     -Force -ErrorAction SilentlyContinue
     Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue
     # Only delete log files on a clean Ctrl+C exit. On unexpected crashes,
     # preserve them so the user can inspect what went wrong.
     if ($cleanExit) {
         Remove-Item $backendLog     -ErrorAction SilentlyContinue
         Remove-Item $backendErrLog  -ErrorAction SilentlyContinue
+        Remove-Item $javaLog        -ErrorAction SilentlyContinue
+        Remove-Item $javaErrLog     -ErrorAction SilentlyContinue
         Remove-Item $frontendLog    -ErrorAction SilentlyContinue
         Remove-Item $frontendErrLog -ErrorAction SilentlyContinue
     }
