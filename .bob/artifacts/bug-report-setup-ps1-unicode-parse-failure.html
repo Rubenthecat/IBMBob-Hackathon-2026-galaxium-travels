@@ -1,0 +1,239 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bug Report: setup.ps1 Unicode Parse Failure</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+    padding: 40px 24px;
+  }
+  .container { max-width: 760px; margin: 0 auto; }
+
+  .header { margin-bottom: 32px; border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #1f2328; margin-bottom: 6px; }
+  .meta { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.02em;
+  }
+  .badge-red    { background: #fde8e8; color: #b91c1c; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .meta-item { font-size: 13px; color: #57606a; }
+  .meta-item strong { color: #1f2328; }
+
+  section { margin-bottom: 28px; }
+  h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #57606a;
+    margin-bottom: 10px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  p { margin-bottom: 8px; color: #1f2328; }
+
+  .code-block {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: "Cascadia Code", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    color: #1f2328;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 8px 0 12px;
+  }
+  .code-bad  { border-left: 3px solid #f87171; }
+  .code-good { border-left: 3px solid #4ade80; }
+
+  .step-list { list-style: none; padding: 0; }
+  .step-list li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #57606a;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .step-desc { font-size: 13px; color: #57606a; }
+  .outcome { display: inline-block; font-size: 11px; font-weight: 600; margin-top: 4px; padding: 1px 7px; border-radius: 10px; }
+  .outcome-fail { background: #fde8e8; color: #b91c1c; }
+  .outcome-pass { background: #dcfce7; color: #166534; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th { text-align: left; padding: 7px 10px; background: #f7f8fa; border: 1px solid #e5e7eb; font-weight: 600; color: #57606a; }
+  td { padding: 7px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  td code { font-family: "Cascadia Code", "Consolas", monospace; font-size: 11px; background: #f7f8fa; padding: 1px 4px; border-radius: 3px; }
+
+  .callout {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-left: 4px solid #4ade80;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #166534;
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 12px;
+    color: #57606a;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Bug Report: setup.ps1 Unicode Parse Failure on Windows PowerShell 5.x</h1>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge badge-red">Bug</span>
+      <span class="badge badge-blue">Windows</span>
+      <span class="badge badge-yellow">PowerShell 5.x</span>
+      <span class="badge badge-green">Resolved</span>
+    </div>
+    <div class="meta" style="margin-top:14px">
+      <div class="meta-item"><strong>File:</strong> setup.ps1</div>
+      <div class="meta-item"><strong>Affected OS:</strong> Windows (PowerShell 5.x)</div>
+      <div class="meta-item"><strong>Status:</strong> Fixed</div>
+    </div>
+  </div>
+
+  
+  <section>
+    <h2>Issue</h2>
+    <p>Running <code style="font-family:monospace;font-size:12px;background:#f7f8fa;padding:1px 5px;border-radius:3px">.\setup.ps1</code> on Windows PowerShell 5.x produced parse errors and garbled terminal output, preventing the script from executing.</p>
+    <p>The script contained two categories of problematic Unicode characters:</p>
+    <ol style="padding-left:20px;margin-top:6px;font-size:13px;color:#1f2328">
+      <li style="margin-bottom:4px"><strong>Em dashes</strong> (<code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">—</code>, U+2014) inside <code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">Write-Host</code> strings — caused <strong>hard parse errors</strong>, aborting execution entirely.</li>
+      <li style="margin-bottom:4px"><strong>Emoji and box-drawing characters</strong> (<code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">🌌 ━ ═ ✅ ⚠️ ❌</code>) — caused garbled terminal output (<code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px"> â€"</code> etc.) even after the parse errors were resolved.</li>
+    </ol>
+    <div class="code-block code-bad" style="margin-top:12px">Unexpected token ')' in expression or statement.
+At setup.ps1:22 char:85
++ ... Docker  (recommended â€œno local dependencies needed beyond Docker)"
++                                                                             ~
+Missing closing ')' in expression.
+CategoryInfo : ParserError: (:) [], ParseException</div>
+    <p style="font-size:13px;color:#57606a">Root cause: PowerShell 5.x reads UTF-8 files without a BOM using Windows-1252 encoding by default. The multi-byte UTF-8 sequence for the em dash (<code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">0xE2 0x80 0x94</code>) is misread as three separate characters, one of which is a <code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">)</code>-lookalike that breaks the string parser.</p>
+  </section>
+
+  
+  <section>
+    <h2>Recommended Solutions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Approach</th>
+          <th>Pros</th>
+          <th>Cons</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>A</strong></td>
+          <td>Save file as <strong>UTF-8 with BOM</strong></td>
+          <td>No code changes needed</td>
+          <td>Does not repair already-corrupted characters at runtime; BOM can cause issues in some toolchains</td>
+        </tr>
+        <tr>
+          <td><strong>B</strong></td>
+          <td>Run with <strong>PowerShell 7+</strong> (<code>pwsh</code>)</td>
+          <td>Handles UTF-8 natively; no file changes</td>
+          <td>Requires PS7 to be installed separately</td>
+        </tr>
+        <tr>
+          <td><strong>C ✓</strong></td>
+          <td><strong>Replace all non-ASCII characters with plain ASCII equivalents</strong></td>
+          <td>Works on all PowerShell versions; no encoding assumptions</td>
+          <td>Minor cosmetic change to output text</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  
+  <section>
+    <h2>Attempts to Fix</h2>
+    <ul class="step-list">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Save file as UTF-8 with BOM (via VS Code)</div>
+          <div class="step-desc">Opened <code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">setup.ps1</code> in VS Code and re-saved with "UTF-8 with BOM" encoding using the bottom status bar encoding picker.</div>
+          <span class="outcome outcome-fail">Failed — same errors persisted</span>
+          <div class="step-desc" style="margin-top:4px">Saving with a BOM does not re-encode characters already stored in the file. The em dashes were already present as valid UTF-8 bytes on disk; the issue was PowerShell 5's parser misinterpreting them at read time, which the BOM alone could not resolve.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Replace em dashes (—) with plain hyphens (-)</div>
+          <div class="step-desc">Used <code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">search_and_replace</code> to swap all 5 occurrences of the em dash for a plain ASCII hyphen. This resolved the hard parse errors and allowed the script to run.</div>
+          <span class="outcome outcome-pass">Partial fix — script now ran, but terminal output was garbled</span>
+          <div class="step-desc" style="margin-top:4px">Remaining emoji (🌌, 🐳, etc.) and box-drawing characters (━, ═) rendered as multi-character garbage sequences in the Windows console.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  
+  <section>
+    <h2>Actual Fix</h2>
+    <div class="callout" style="margin-bottom:14px">
+      Replaced all non-ASCII Unicode characters throughout <code style="font-family:monospace;font-size:11px">setup.ps1</code> with plain ASCII equivalents. No encoding settings were changed.
+    </div>
+    <table>
+      <thead>
+        <tr><th>Original Character</th><th>Replaced With</th><th>Occurrences</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>—</code> Em dash (U+2014)</td><td><code>-</code></td><td>5</td></tr>
+        <tr><td><code>━━━</code> / <code>═══</code> Box-drawing lines</td><td><code>=======</code></td><td>6</td></tr>
+        <tr><td><code>✅</code> <code>⚠️</code> <code>❌</code> Status emoji</td><td><code>[OK]</code> <code>[!!]</code> <code>[ERR]</code></td><td>3</td></tr>
+        <tr><td><code>🌌</code> <code>🐳</code> <code>💻</code> <code>📡</code> <code>🎨</code> <code>🌟</code> Decorative emoji</td><td>Removed (text labels retained)</td><td>6</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px;font-size:13px">After this change, <code style="font-family:monospace;font-size:11px;background:#f7f8fa;padding:1px 4px;border-radius:3px">.\setup.ps1</code> parses and runs cleanly on Windows PowerShell 5.x with no encoding configuration required.</p>
+  </section>
+
+  <footer>Made with IBM Bob</footer>
+</div>
+</body>
+</html>

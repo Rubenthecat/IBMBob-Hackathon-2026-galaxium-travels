@@ -1,4 +1,4 @@
-# setup.ps1 — First-run bootstrap for Galaxium Travels (Windows)
+# setup.ps1 - First-run bootstrap for Galaxium Travels (Windows)
 # Prompts for Docker or Local mode, installs missing tools via winget, then launches the app.
 # Requires: Windows 10 version 1709 or newer (for winget support in Local mode)
 
@@ -6,21 +6,21 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # ── Colours ──────────────────────────────────────────────────────────────────
-function Write-Green  { param($msg) Write-Host "✅ $msg" -ForegroundColor Green }
-function Write-Yellow { param($msg) Write-Host "⚠️  $msg" -ForegroundColor Yellow }
-function Write-Red    { param($msg) Write-Host "❌ $msg" -ForegroundColor Red }
+function Write-Green  { param($msg) Write-Host "[OK]  $msg" -ForegroundColor Green }
+function Write-Yellow { param($msg) Write-Host "[!!]  $msg" -ForegroundColor Yellow }
+function Write-Red    { param($msg) Write-Host "[ERR] $msg" -ForegroundColor Red }
 function Write-Blue   { param($msg) Write-Host $msg -ForegroundColor Cyan }
 
 Write-Host ""
-Write-Host "🌌 Galaxium Travels — First-Run Setup" -ForegroundColor White
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Write-Host "Galaxium Travels - First-Run Setup" -ForegroundColor White
+Write-Host "======================================="
 Write-Host ""
 
 # ── Mode Prompt ───────────────────────────────────────────────────────────────
 Write-Host "How would you like to run the application?"
 Write-Host ""
-Write-Host "  1) Docker  (recommended — no local dependencies needed beyond Docker)"
-Write-Host "  2) Local   (runs directly on your machine — installs missing tools via winget)"
+Write-Host "  1) Docker  (recommended - no local dependencies needed beyond Docker)"
+Write-Host "  2) Local   (runs directly on your machine - installs missing tools via winget)"
 Write-Host ""
 $modeChoice = Read-Host "Enter your choice [1 or 2]"
 
@@ -35,11 +35,11 @@ switch ($modeChoice) {
 
 Write-Host ""
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # DOCKER MODE
-# ════════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 if ($mode -eq "docker") {
-    Write-Blue "🐳 Docker mode selected."
+    Write-Blue "Docker mode selected."
     Write-Host ""
 
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -82,10 +82,10 @@ if ($mode -eq "docker") {
     exit $LASTEXITCODE
 }
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # LOCAL MODE
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Blue "💻 Local mode selected."
+# ==============================================================================
+Write-Blue "Local mode selected."
 Write-Host ""
 Write-Yellow "Note: Local mode requires Windows 10 version 1709 or newer for winget support."
 Write-Host ""
@@ -103,13 +103,27 @@ function Require-Tool {
     }
     Write-Yellow "$DisplayName not found. Installing via winget..."
     winget install --id $WingetId --silent --accept-package-agreements --accept-source-agreements
+    # Give the installer a moment to finish writing PATH entries before we refresh
+    Start-Sleep -Seconds 3
     # Refresh PATH so the newly installed binary is visible
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
                 [System.Environment]::GetEnvironmentVariable("Path","User")
-    if (Get-Command $Binary -ErrorAction SilentlyContinue) {
+    # "py" (launcher) requires an elevated install; fall back to "python" for per-user installs
+    $resolved = $Binary
+    if (-not (Get-Command $Binary -ErrorAction SilentlyContinue)) {
+        if ($Binary -eq "py" -and (Get-Command "python" -ErrorAction SilentlyContinue)) {
+            $resolved = "python"
+        }
+    }
+    if (Get-Command $resolved -ErrorAction SilentlyContinue) {
         Write-Green "$DisplayName installed successfully."
+        # Keep the rest of the script working with whichever binary is available
+        if ($resolved -ne $Binary) {
+            Set-Alias -Name $Binary -Value $resolved -Scope Script -ErrorAction SilentlyContinue
+        }
     } else {
         Write-Red "Failed to install $DisplayName. Please install it manually and re-run."
+        Write-Host "  Tip: Download from https://www.python.org/downloads/ and ensure 'Add to PATH' is checked."
         exit 1
     }
 }
@@ -118,10 +132,10 @@ function Require-Tool {
 Write-Host "Checking required tools..."
 Write-Host ""
 
-Require-Tool -Binary "python"  -WingetId "Python.Python.3.11" -DisplayName "Python 3"
+Require-Tool -Binary "py"      -WingetId "Python.Python.3.11" -DisplayName "Python 3"
 Require-Tool -Binary "node"    -WingetId "OpenJS.NodeJS"       -DisplayName "Node.js"
 
-# Java 21 required — the Java Hold Service is a required component
+# Java 21 required - the Java Hold Service is a required component
 Require-Tool -Binary "java" -WingetId "Microsoft.OpenJDK.21" -DisplayName "Java 21"
 Require-Tool -Binary "mvn"  -WingetId "Apache.Maven"         -DisplayName "Maven"
 
@@ -157,76 +171,157 @@ Stop-PortProcess 8080
 Start-Sleep -Seconds 1
 
 # ── Start Backend ─────────────────────────────────────────────────────────────
-Write-Blue "`n📡 Starting Backend Server..."
+Write-Blue "`nStarting Backend Server..."
 Set-Location (Join-Path $ScriptDir "booking_system_backend")
 
 if (-not (Test-Path ".venv")) {
     Write-Host "Creating Python virtual environment..."
-    python -m venv .venv
+    # Use py launcher if available, otherwise fall back to python
+    $pyExe = if (Get-Command py -ErrorAction SilentlyContinue) { "py" } else { "python" }
+    & $pyExe -m venv .venv
 }
 
 Write-Host "Installing Python dependencies..."
-.\.venv\Scripts\pip install -q -r requirements.txt
+.\.venv\Scripts\python -m pip install -q -r requirements.txt
 
-$backendLog = Join-Path $ScriptDir "booking_system_backend\backend.log"
-$backendProc = Start-Process -FilePath ".\.venv\Scripts\python" -ArgumentList "server.py" `
-    -RedirectStandardOutput $backendLog -RedirectStandardError $backendLog `
-    -NoNewWindow -PassThru
+# Start-Process cannot redirect stdout and stderr to the same file path.
+# Use separate files; Uvicorn writes everything to stderr so backend.log.err is
+# the useful one. Both are cleaned up on exit.
+$backendLog    = Join-Path $ScriptDir "booking_system_backend\backend.log"
+$backendErrLog = Join-Path $ScriptDir "booking_system_backend\backend.log.err"
+$backendDir    = Join-Path $ScriptDir "booking_system_backend"
+$pythonExe     = Join-Path $backendDir ".venv\Scripts\python.exe"
+# Launch directly — no wrapper job, so we hold the real PID and Stop-Process works.
+$backendProc = Start-Process -FilePath $pythonExe -ArgumentList "server.py" `
+    -RedirectStandardOutput $backendLog -RedirectStandardError $backendErrLog `
+    -WorkingDirectory $backendDir -NoNewWindow -PassThru
 
-# ── Health-check backend (5 attempts, 2 s apart) ─────────────────────────────
+# ── Health-check backend (15 attempts, 2 s apart) ────────────────────────────
+# curl.exe (ships with Windows 10+) is used instead of Invoke-WebRequest.
+# IWR deadlocks when the child process has redirected stdout/stderr pipes that
+# fill faster than PowerShell drains them — curl.exe has no such issue.
 Write-Host "Waiting for backend to start..."
 $backendReady = $false
-for ($i = 1; $i -le 5; $i++) {
+for ($i = 1; $i -le 15; $i++) {
     Start-Sleep -Seconds 2
-    try {
-        $null = Invoke-WebRequest -Uri "http://localhost:8001/" -UseBasicParsing -TimeoutSec 2
+    $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 2 "http://localhost:8001/" 2>$null
+    if ($code -match '^\d+$' -and [int]$code -lt 500) {
         $backendReady = $true
         break
-    } catch { }
+    }
 }
 
 if (-not $backendReady) {
-    Write-Red "Backend failed to start. Check booking_system_backend\backend.log for errors."
+    Write-Red "Backend failed to start. Check booking_system_backend\backend.log.err for errors."
     Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
     exit 1
 }
 Write-Green "Backend started on http://localhost:8001"
 
 # ── Start Frontend ────────────────────────────────────────────────────────────
-Write-Blue "`n🎨 Starting Frontend Server..."
-Set-Location (Join-Path $ScriptDir "booking_system_frontend")
+Write-Blue "`nStarting Frontend Server..."
+$frontendDir    = Join-Path $ScriptDir "booking_system_frontend"
+$frontendLog    = Join-Path $frontendDir "frontend.log"
+$frontendErrLog = Join-Path $frontendDir "frontend.log.err"
+
+Set-Location $frontendDir
 
 if (-not (Test-Path "node_modules")) {
     Write-Host "Installing frontend dependencies..."
-    npm install
+    # npm is a .cmd script on Windows; route through cmd.exe so it resolves
+    & cmd.exe /c "npm install"
 }
 
-$frontendProc = Start-Process -FilePath "npm" -ArgumentList "run", "dev" `
-    -NoNewWindow -PassThru
+# We invoke node.exe directly (bypassing npm/cmd.exe wrappers) so that
+# Start-Process holds the real long-running PID. npm.cmd and cmd.exe are
+# short-lived launchers — Start-Process on them returns a PID that exits
+# within seconds, making HasExited=true immediately and breaking the
+# keep-alive loop. node_modules/.bin/vite.cmd itself reveals the real call:
+#   node  node_modules/vite/bin/vite.js
+$nodeExe    = (Get-Command node -ErrorAction SilentlyContinue).Source
+$viteScript = Join-Path $frontendDir "node_modules\vite\bin\vite.js"
+if (-not $nodeExe) {
+    Write-Red "node.exe not found on PATH. Please install Node.js and re-run."
+    Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+if (-not (Test-Path $viteScript)) {
+    Write-Red "Vite not found at $viteScript. Run 'npm install' in booking_system_frontend and re-run."
+    Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+# The vite script path may contain spaces (e.g. "IBM Bob Hackathon 2026").
+# Pass it as a single quoted token so node.exe receives it as one argument.
+$frontendProc = Start-Process -FilePath $nodeExe `
+    -ArgumentList "`"$viteScript`"" `
+    -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErrLog `
+    -WorkingDirectory $frontendDir -NoNewWindow -PassThru
 
-Start-Sleep -Seconds 3
+# ── Health-check frontend (15 attempts, 2 s apart) ───────────────────────────
+Write-Host "Waiting for frontend to start..."
+$frontendReady = $false
+for ($i = 1; $i -le 15; $i++) {
+    Start-Sleep -Seconds 2
+    $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 2 "http://localhost:5173/" 2>$null
+    if ($code -match '^\d+$' -and [int]$code -lt 500) {
+        $frontendReady = $true
+        break
+    }
+}
+
+if (-not $frontendReady) {
+    Write-Red "Frontend failed to start. Check booking_system_frontend\frontend.log.err for errors."
+    Stop-Process -Id $backendProc.Id  -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue
+    exit 1
+}
 Write-Green "Frontend started on http://localhost:5173"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 Set-Location $ScriptDir
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Write-Host "🌟 Galaxium Travels is running!" -ForegroundColor White
+Write-Host "======================================================="
+Write-Host "Galaxium Travels is running!" -ForegroundColor White
 Write-Host ""
 Write-Host "   Backend:   http://localhost:8001"
 Write-Host "   Frontend:  http://localhost:5173"
 Write-Host "   API Docs:  http://localhost:8001/docs"
 Write-Host ""
-Write-Host "Press Ctrl+C to stop. Backend log: booking_system_backend\backend.log"
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Write-Host "Press Ctrl+C to stop. Backend log: booking_system_backend\backend.log.err"
+Write-Host "======================================================="
 
-# Keep the script alive so Ctrl+C stops both child processes
+# Keep the script alive until Ctrl+C or until a child process crashes.
+# We poll HasExited instead of Wait-Process. npm/cmd.exe wrappers are
+# short-lived launchers whose PID exits seconds after spawning Node —
+# Wait-Process on those PIDs would unblock immediately and kill everything.
+# By running node.exe directly above, $frontendProc holds the real Vite PID.
+$cleanExit = $false
 try {
-    Wait-Process -Id $backendProc.Id, $frontendProc.Id
+    while ($true) {
+        Start-Sleep -Seconds 2
+        if ($backendProc.HasExited) {
+            Write-Red "Backend process exited unexpectedly. Check booking_system_backend\backend.log.err"
+            break
+        }
+        if ($frontendProc.HasExited) {
+            Write-Red "Frontend process exited unexpectedly. Check booking_system_frontend\frontend.log.err"
+            break
+        }
+    }
+} catch [System.Management.Automation.PipelineStoppedException] {
+    # Ctrl+C raises PipelineStoppedException — clean exit, safe to remove logs
+    $cleanExit = $true
 } finally {
     Stop-Process -Id $backendProc.Id  -Force -ErrorAction SilentlyContinue
     Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue
-    Remove-Item $backendLog -ErrorAction SilentlyContinue
+    # Only delete log files on a clean Ctrl+C exit. On unexpected crashes,
+    # preserve them so the user can inspect what went wrong.
+    if ($cleanExit) {
+        Remove-Item $backendLog     -ErrorAction SilentlyContinue
+        Remove-Item $backendErrLog  -ErrorAction SilentlyContinue
+        Remove-Item $frontendLog    -ErrorAction SilentlyContinue
+        Remove-Item $frontendErrLog -ErrorAction SilentlyContinue
+    }
 }
 
 # Made with Bob

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # setup.sh — First-run bootstrap for Galaxium Travels
 # Prompts for Docker or Local mode, installs missing dependencies, then launches the app.
 
