@@ -97,7 +97,9 @@ function Require-Tool {
     param(
         [string]$Binary,
         [string]$WingetId,
-        [string]$DisplayName
+        [string]$DisplayName,
+        [string]$ScoopPkg = "",
+        [string]$TipUrl   = "https://www.python.org/downloads/"
     )
     if (Get-Command $Binary -ErrorAction SilentlyContinue) {
         Write-Green "$DisplayName found: $((Get-Command $Binary).Source)"
@@ -123,11 +125,42 @@ function Require-Tool {
         if ($resolved -ne $Binary) {
             Set-Alias -Name $Binary -Value $resolved -Scope Script -ErrorAction SilentlyContinue
         }
-    } else {
-        Write-Red "Failed to install $DisplayName. Please install it manually and re-run."
-        Write-Host "  Tip: Download from https://www.python.org/downloads/ and ensure 'Add to PATH' is checked."
-        exit 1
+        return
     }
+
+    # ── Scoop fallback (used when winget does not carry the package) ──────────
+    if ($ScoopPkg -ne "") {
+        Write-Yellow "winget install failed. Trying Scoop fallback for $DisplayName..."
+
+        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+            Write-Yellow "Scoop not found. Installing Scoop automatically..."
+            Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+            Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+            # Refresh PATH so the scoop shim directory is visible
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
+                        [System.Environment]::GetEnvironmentVariable("Path","User")
+            if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+                Write-Red "Failed to install Scoop. Please install $DisplayName manually and re-run."
+                Write-Host "  Tip: Download from $TipUrl"
+                exit 1
+            }
+            Write-Green "Scoop installed successfully."
+        }
+
+        scoop install $ScoopPkg
+        Start-Sleep -Seconds 2
+        # Refresh PATH again after scoop install
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
+                    [System.Environment]::GetEnvironmentVariable("Path","User")
+        if (Get-Command $Binary -ErrorAction SilentlyContinue) {
+            Write-Green "$DisplayName installed successfully via Scoop."
+            return
+        }
+    }
+
+    Write-Red "Failed to install $DisplayName. Please install it manually and re-run."
+    Write-Host "  Tip: Download from $TipUrl"
+    exit 1
 }
 
 # ── Check / install required tools ───────────────────────────────────────────
@@ -139,7 +172,8 @@ Require-Tool -Binary "node"    -WingetId "OpenJS.NodeJS"       -DisplayName "Nod
 
 # Java 21 required - the Java Hold Service is a required component
 Require-Tool -Binary "java" -WingetId "Microsoft.OpenJDK.21" -DisplayName "Java 21"
-Require-Tool -Binary "mvn"  -WingetId "Apache.Maven"         -DisplayName "Maven"
+Require-Tool -Binary "mvn"  -WingetId "Apache.Maven"         -DisplayName "Maven" `
+             -ScoopPkg "maven" -TipUrl "https://maven.apache.org/download.cgi"
 
 Write-Host ""
 
