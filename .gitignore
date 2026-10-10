@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+﻿# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -25,6 +25,7 @@ var/
 *.egg
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env.bak/
@@ -58,6 +59,9 @@ coverage.xml
 
 # Django stuff:
 *.log
+*.log.err
+*.err
+*.tmp
 local_settings.py
 
 # Flask stuff:
@@ -134,18 +138,34 @@ booking.db
 # Fly.io deployment
 fly.toml
 
+# Terraform variable files (may contain real secrets)
+*.tfvars
+
 # System files
 Thumbs.db
-desktop.ini 
+desktop.ini
+$RECYCLE.BIN/
 
 .env
+
+# Security — credential and certificate files
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 ### Additional files
 HR_database/.venv/
 booking_system_rest/.venv/
 galaxium-booking-web-app/.venv/
+booking_system_backend/.venv/
 architecture/.$galaxim-travel-infrastructure.drawio.dtmp
 architecture/.$galaxim-travel-infrastructure.drawio.bkp
+
+# Frontend build artefacts (scoped to prevent re-committing)
+booking_system_frontend/node_modules/
+booking_system_frontend/dist/
 
 bob_documents/
 internal_monolouge/
