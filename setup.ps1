@@ -135,7 +135,7 @@ function Require-Tool {
         if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
             Write-Yellow "Scoop not found. Installing Scoop automatically..."
             Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-            Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+            & ([ScriptBlock]::Create((Invoke-RestMethod -Uri https://get.scoop.sh))) -RunAsAdmin
             # Refresh PATH so the scoop shim directory is visible
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
                         [System.Environment]::GetEnvironmentVariable("Path","User")
