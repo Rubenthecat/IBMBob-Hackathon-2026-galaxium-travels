@@ -128,7 +128,7 @@ if [ "$PLATFORM" = "linux" ]; then
   echo -n "Grant sudo access for this session? [y/N] "
   read -r SUDO_OK
   if [[ "$SUDO_OK" =~ ^[Yy]$ ]]; then
-    sudo -v   # cache credentials
+    sudo true   # verify sudo access and cache credentials
     # Keep sudo alive for the duration of the script
     ( while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done ) 2>/dev/null &
     SUDO_KEEPALIVE_PID=$!
