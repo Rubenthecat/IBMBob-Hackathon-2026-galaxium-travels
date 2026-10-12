@@ -65,12 +65,22 @@ cd booking_system_backend
 # Check if virtual environment exists, create if not
 if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
-    python3 -m venv .venv
+    if ! python3 -m venv .venv; then
+        echo "❌ Failed to create virtual environment."
+        echo "   On Debian/Ubuntu, run:  sudo apt-get install -y python3-venv"
+        echo "   Then re-run: ./setup.sh"
+        exit 1
+    fi
 fi
 
 # Activate virtual environment and install dependencies
+if [ ! -f ".venv/bin/activate" ]; then
+    echo "❌ Virtual environment activation script not found."
+    echo "   Delete booking_system_backend/.venv and re-run: ./setup.sh"
+    exit 1
+fi
 source .venv/bin/activate
-pip install -q -r requirements.txt
+.venv/bin/python3 -m pip install -q -r requirements.txt
 
 # Start backend server in background using venv Python
 .venv/bin/python server.py > backend.log 2>&1 &

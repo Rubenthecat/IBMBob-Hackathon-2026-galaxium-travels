@@ -221,6 +221,24 @@ require_tool node      node          nodejs          "Node.js"
 require_tool curl      curl          curl            "curl"
 require_tool lsof      lsof          lsof            "lsof"
 
+# ─── Linux: ensure python3-venv is available ────────────────────────────────
+# On Debian/Ubuntu, python3 does not ship with ensurepip; the venv module
+# needs the matching python3.X-venv package or the generic python3-venv.
+if [ "$PLATFORM" = "linux" ] && [ -n "$SUDO_CMD" ]; then
+  PYTHON_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+  VENV_PKG="python${PYTHON_VER}-venv"
+  if ! python3 -m venv --help &>/dev/null 2>&1 || ! python3 -c "import ensurepip" &>/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  python3 venv/ensurepip not available. Installing ${VENV_PKG}...${NC}"
+    $SUDO_CMD apt-get update -qq
+    if ! $SUDO_CMD apt-get install -y "$VENV_PKG" 2>/dev/null; then
+      # Fallback to the generic package name
+      $SUDO_CMD apt-get install -y python3-venv
+    fi
+  else
+    echo -e "${GREEN}✅ python3 venv support confirmed.${NC}"
+  fi
+fi
+
 # Java 17 or 21 required — the Java Hold Service is a required component
 _java_major_version() {
   java -version 2>&1 | head -1 | sed 's/.*version "\([0-9]*\).*/\1/'
