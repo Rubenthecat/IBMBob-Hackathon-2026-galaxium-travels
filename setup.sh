@@ -341,6 +341,11 @@ ENV_FILE="$SCRIPT_DIR/booking_system_frontend/.env"
 if [ -f "$ENV_EXAMPLE" ] && [ ! -f "$ENV_FILE" ]; then
   cp "$ENV_EXAMPLE" "$ENV_FILE"
   echo -e "${GREEN}✅ Created booking_system_frontend/.env from .env.example${NC}"
+elif [ -f "$ENV_FILE" ] && grep -q '^VITE_API_URL=http://localhost:8001' "$ENV_FILE"; then
+  # Old hardcoded localhost URL breaks access when Vite is bound to 0.0.0.0 (host: true).
+  # Remove it so the frontend falls back to the Vite dev-server proxy (/api → localhost:8001).
+  sed -i 's|^VITE_API_URL=http://localhost:8001||' "$ENV_FILE"
+  echo -e "${YELLOW}⚠️  Removed hardcoded VITE_API_URL from .env — using Vite proxy instead.${NC}"
 fi
 
 echo ""
