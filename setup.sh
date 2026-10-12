@@ -180,7 +180,7 @@ require_tool() {
 }
 
 # ─── Helper: install_maven_linux ─────────────────────────────────────────────
-# Ensures Maven >= 3.8.x is on PATH. If not, installs 3.9.9 from upstream binary.
+# Ensures Maven >= 3.8.x is on PATH. If not, installs 3.9.16 from upstream binary.
 install_maven_linux() {
   if command -v mvn &>/dev/null; then
     local mvn_ver
@@ -196,16 +196,16 @@ install_maven_linux() {
     fi
   fi
 
-  echo -e "${YELLOW}⚠️  Maven not found or too old. Installing Maven 3.9.9...${NC}"
+  echo -e "${YELLOW}⚠️  Maven not found or too old. Installing Maven 3.9.16...${NC}"
 
-  curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz \
-    -o /tmp/apache-maven-3.9.9-bin.tar.gz
-  $SUDO_CMD tar -xzf /tmp/apache-maven-3.9.9-bin.tar.gz -C /opt/
-  $SUDO_CMD ln -sf /opt/apache-maven-3.9.9/bin/mvn /usr/local/bin/mvn
-  rm -f /tmp/apache-maven-3.9.9-bin.tar.gz
+  curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz \
+    -o /tmp/apache-maven-3.9.16-bin.tar.gz
+  $SUDO_CMD tar -xzf /tmp/apache-maven-3.9.16-bin.tar.gz -C /opt/
+  $SUDO_CMD ln -sf /opt/apache-maven-3.9.16/bin/mvn /usr/local/bin/mvn
+  rm -f /tmp/apache-maven-3.9.16-bin.tar.gz
 
   if mvn --version &>/dev/null; then
-    echo -e "${GREEN}✅ Maven 3.9.9 installed successfully.${NC}"
+    echo -e "${GREEN}✅ Maven 3.9.16 installed successfully.${NC}"
   else
     echo -e "${RED}❌ Maven installation failed. Please install manually and re-run.${NC}"
     exit 1
