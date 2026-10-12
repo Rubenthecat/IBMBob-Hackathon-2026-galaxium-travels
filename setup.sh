@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # setup.sh — First-run bootstrap for Galaxium Travels
 # Prompts for Docker or Local mode, installs missing dependencies, then launches the app.
 
@@ -179,6 +179,39 @@ require_tool() {
   fi
 }
 
+# ─── Helper: install_maven_linux ─────────────────────────────────────────────
+# Ensures Maven >= 3.8.x is on PATH. If not, installs 3.9.9 from upstream binary.
+install_maven_linux() {
+  if command -v mvn &>/dev/null; then
+    local mvn_ver
+    mvn_ver=$(mvn --version 2>/dev/null | awk '/Apache Maven/ {print $3}')
+    # Accept 3.8.x or any higher minor/major (e.g. 3.9.x, 4.x)
+    if [[ "$mvn_ver" =~ ^([0-9]+)\.([0-9]+) ]]; then
+      local major="${BASH_REMATCH[1]}"
+      local minor="${BASH_REMATCH[2]}"
+      if [ "$major" -gt 3 ] || { [ "$major" -eq 3 ] && [ "$minor" -ge 8 ]; }; then
+        echo -e "${GREEN}✅ Maven found: $mvn_ver${NC}"
+        return 0
+      fi
+    fi
+  fi
+
+  echo -e "${YELLOW}⚠️  Maven not found or too old. Installing Maven 3.9.9...${NC}"
+
+  curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz \
+    -o /tmp/apache-maven-3.9.9-bin.tar.gz
+  $SUDO_CMD tar -xzf /tmp/apache-maven-3.9.9-bin.tar.gz -C /opt/
+  $SUDO_CMD ln -sf /opt/apache-maven-3.9.9/bin/mvn /usr/local/bin/mvn
+  rm -f /tmp/apache-maven-3.9.9-bin.tar.gz
+
+  if mvn --version &>/dev/null; then
+    echo -e "${GREEN}✅ Maven 3.9.9 installed successfully.${NC}"
+  else
+    echo -e "${RED}❌ Maven installation failed. Please install manually and re-run.${NC}"
+    exit 1
+  fi
+}
+
 # ─── Check / install required tools ─────────────────────────────────────────
 echo "Checking required tools..."
 echo ""
@@ -189,20 +222,55 @@ require_tool curl      curl          curl            "curl"
 require_tool lsof      lsof          lsof            "lsof"
 
 # Java 17 or 21 required — the Java Hold Service is a required component
-require_tool java openjdk@21 openjdk-21-jdk "Java 21"
+_java_major_version() {
+  java -version 2>&1 | head -1 | sed 's/.*version "\([0-9]*\).*/\1/'
+}
 
-# After installing via brew on macOS, the JDK may not be on PATH automatically
-if [ "$PLATFORM" = "macos" ] && ! command -v java &>/dev/null; then
-  BREW_JAVA="$(brew --prefix openjdk@21 2>/dev/null)/bin"
-  if [ -d "$BREW_JAVA" ]; then
-    export PATH="$BREW_JAVA:$PATH"
-    echo -e "${YELLOW}   Added $BREW_JAVA to PATH for this session.${NC}"
-    echo "   To make this permanent, add to your shell profile:"
-    echo "   export PATH=\"\$(brew --prefix openjdk@21)/bin:\$PATH\""
+if [ "$PLATFORM" = "linux" ]; then
+  if command -v java &>/dev/null; then
+    _jv="$(_java_major_version)"
+    if [ "$_jv" = "17" ] || [ "$_jv" = "21" ]; then
+      echo -e "${GREEN}✅ Java $_jv already installed — skipping.${NC}"
+    else
+      echo -e "${YELLOW}⚠️  Java $_jv found but Hold Service requires 17 or 21. Attempting install...${NC}"
+      $SUDO_CMD apt-get update -qq
+      if ! $SUDO_CMD apt-get install -y openjdk-21-jdk 2>/dev/null; then
+        if ! $SUDO_CMD apt-get install -y openjdk-17-jdk 2>/dev/null; then
+          echo -e "${YELLOW}⚠️  Could not install Java automatically. Please install manually:${NC}"
+          echo "   sudo apt-get install -y openjdk-17-jdk"
+          echo "   or via SDKMAN: sdk install java 17.0.x-tem"
+        fi
+      fi
+    fi
+  else
+    $SUDO_CMD apt-get update -qq
+    if ! $SUDO_CMD apt-get install -y openjdk-21-jdk 2>/dev/null; then
+      if ! $SUDO_CMD apt-get install -y openjdk-17-jdk 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  Could not install Java automatically. Please install manually:${NC}"
+        echo "   sudo apt-get install -y openjdk-17-jdk"
+        echo "   or via SDKMAN: sdk install java 17.0.x-tem"
+      fi
+    fi
+  fi
+elif [ "$PLATFORM" = "macos" ]; then
+  brew install openjdk@21
+  # After installing via brew on macOS, the JDK may not be on PATH automatically
+  if ! command -v java &>/dev/null; then
+    BREW_JAVA="$(brew --prefix openjdk@21 2>/dev/null)/bin"
+    if [ -d "$BREW_JAVA" ]; then
+      export PATH="$BREW_JAVA:$PATH"
+      echo -e "${YELLOW}   Added $BREW_JAVA to PATH for this session.${NC}"
+      echo "   To make this permanent, add to your shell profile:"
+      echo "   export PATH=\"\$(brew --prefix openjdk@21)/bin:\$PATH\""
+    fi
   fi
 fi
 
-require_tool mvn maven maven "Maven"
+if [ "$PLATFORM" = "macos" ]; then
+  require_tool mvn maven maven "Maven"
+elif [ "$PLATFORM" = "linux" ]; then
+  install_maven_linux
+fi
 
 echo ""
 
