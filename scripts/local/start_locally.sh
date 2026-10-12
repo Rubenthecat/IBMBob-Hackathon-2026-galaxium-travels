@@ -188,6 +188,14 @@ fi
 
 # Start Frontend
 echo -e "${BLUE}🎨 Starting Frontend Server...${NC}"
+
+if ! command -v npm &> /dev/null; then
+    echo "❌ npm is not installed. Cannot start the frontend."
+    echo "   Install Node.js (which includes npm) and re-run: ./setup.sh"
+    kill $BACKEND_PID 2>/dev/null
+    exit 1
+fi
+
 cd booking_system_frontend
 
 # Install dependencies if node_modules doesn't exist

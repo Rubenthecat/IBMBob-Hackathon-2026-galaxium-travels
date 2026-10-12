@@ -179,6 +179,42 @@ require_tool() {
   fi
 }
 
+# ─── Helper: install_node_linux ──────────────────────────────────────────────
+# Ensures a modern Node.js (with npm) is on PATH.
+# Uses the NodeSource setup script for Node 20 LTS when node/npm is missing.
+install_node_linux() {
+  # If both binaries are already present, nothing to do
+  if command -v node &>/dev/null && command -v npm &>/dev/null; then
+    echo -e "${GREEN}✅ Node.js found: $(node --version)${NC}"
+    echo -e "${GREEN}✅ npm found: $(npm --version)${NC}"
+    return 0
+  fi
+
+  echo -e "${YELLOW}⚠️  Node.js / npm not found. Installing via NodeSource (Node 20 LTS)...${NC}"
+
+  if [ -z "$SUDO_CMD" ]; then
+    echo -e "${RED}❌ Cannot install Node.js without sudo. Please install it manually:${NC}"
+    echo "   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
+    echo "   sudo apt-get install -y nodejs"
+    exit 1
+  fi
+
+  if ! command -v curl &>/dev/null; then
+    $SUDO_CMD apt-get update -qq
+    $SUDO_CMD apt-get install -y curl
+  fi
+
+  curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
+  $SUDO_CMD apt-get install -y nodejs
+
+  if command -v node &>/dev/null && command -v npm &>/dev/null; then
+    echo -e "${GREEN}✅ Node.js $(node --version) and npm $(npm --version) installed successfully.${NC}"
+  else
+    echo -e "${RED}❌ Node.js/npm installation failed. Please install manually and re-run.${NC}"
+    exit 1
+  fi
+}
+
 # ─── Helper: install_maven_linux ─────────────────────────────────────────────
 # Ensures Maven >= 3.8.x is on PATH. If not, installs 3.9.16 from upstream binary.
 install_maven_linux() {
@@ -217,9 +253,15 @@ echo "Checking required tools..."
 echo ""
 
 require_tool python3   python3       python3         "Python 3"
-require_tool node      node          nodejs          "Node.js"
 require_tool curl      curl          curl            "curl"
 require_tool lsof      lsof          lsof            "lsof"
+
+if [ "$PLATFORM" = "macos" ]; then
+  require_tool node  node  node  "Node.js"
+  require_tool npm   node  npm   "npm"
+elif [ "$PLATFORM" = "linux" ]; then
+  install_node_linux
+fi
 
 # ─── Linux: ensure python3-venv is available ────────────────────────────────
 # On Debian/Ubuntu, python3 does not ship with ensurepip; the venv module
