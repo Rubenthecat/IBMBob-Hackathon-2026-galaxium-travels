@@ -518,10 +518,12 @@ ${_codename} stable" \
   _free_port() {
     local _port="$1"
     local _pid
+    # lsof/fuser return non-zero when nothing is on the port — append || true so
+    # set -e does not abort the script when all ports are already free.
     if command -v lsof &>/dev/null; then
-      _pid="$(lsof -ti :"$_port" 2>/dev/null)"
+      _pid="$(lsof -ti :"$_port" 2>/dev/null || true)"
     elif command -v fuser &>/dev/null; then
-      _pid="$(fuser "${_port}/tcp" 2>/dev/null)"
+      _pid="$(fuser "${_port}/tcp" 2>/dev/null || true)"
     fi
     if [ -n "$_pid" ]; then
       echo "  (freeing port $_port — killing PID $_pid)"
