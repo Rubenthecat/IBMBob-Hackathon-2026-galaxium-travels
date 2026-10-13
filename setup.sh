@@ -261,8 +261,6 @@ if [ "$MODE" = "docker" ]; then
   #   yum  — RHEL/CentOS 7, Amazon Linux 2
   #   zypper — openSUSE Leap / Tumbleweed
   _ensure_docker_repo() {
-    _detect_pkg_manager
-
     case "$PKG_MANAGER" in
 
       apt)
