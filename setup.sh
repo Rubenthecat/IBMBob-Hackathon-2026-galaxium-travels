@@ -72,14 +72,56 @@ if [ "$MODE" = "docker" ]; then
     echo -e "${RED}❌ Docker is not installed.${NC}"
     echo ""
     if [ "$PLATFORM" = "macos" ]; then
-      echo "Install Docker Desktop: https://docs.docker.com/desktop/install/mac-install/"
-      echo "Or via Homebrew:  brew install --cask docker"
+      echo "Docker can be installed via Homebrew:"
+      echo "  brew install --cask docker"
+      echo ""
+      read -rp "Would you like to install Docker Desktop via Homebrew now? [y/N] " _install_docker
+      if [[ "$_install_docker" =~ ^[Yy]$ ]]; then
+        if ! command -v brew &>/dev/null; then
+          echo -e "${RED}❌ Homebrew is not installed. Install it first:${NC}"
+          echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+          echo "Then re-run: ./setup.sh"
+          exit 1
+        fi
+        brew install --cask docker
+        echo ""
+        echo -e "${YELLOW}⚠️  Docker Desktop was installed but needs to be started manually.${NC}"
+        echo "Open Docker Desktop from your Applications folder, wait for it to finish"
+        echo "starting (whale icon in the menu bar stops animating), then re-run:"
+        echo ""
+        echo "  ./setup.sh"
+        exit 0
+      else
+        echo "Install Docker Desktop manually: https://docs.docker.com/desktop/install/mac-install/"
+        echo "Then re-run: ./setup.sh"
+        exit 1
+      fi
     else
-      echo "Install Docker: https://docs.docker.com/engine/install/"
+      echo "Docker can be installed via apt-get."
+      echo ""
+      if sudo -n true 2>/dev/null || { read -rp "Grant sudo to install Docker? [y/N] " _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
+        echo "  (installing docker.io...)"
+        sudo apt-get update -qq
+        if sudo apt-get install -y docker.io 2>/dev/null; then
+          echo -e "${GREEN}✅ docker.io installed.${NC}"
+          sudo systemctl enable --now docker 2>/dev/null || true
+        else
+          echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
+          echo "   https://docs.docker.com/engine/install/"
+          echo "Then re-run: ./setup.sh"
+          exit 1
+        fi
+      else
+        echo "Install Docker manually: https://docs.docker.com/engine/install/"
+        echo "Then re-run: ./setup.sh"
+        exit 1
+      fi
+      # Re-probe after install
+      if ! command -v docker &>/dev/null; then
+        echo -e "${RED}❌ Docker still not available after install. Please install manually and re-run.${NC}"
+        exit 1
+      fi
     fi
-    echo ""
-    echo "After installing Docker, re-run: ./setup.sh"
-    exit 1
   fi
 
   # Check docker daemon is running
