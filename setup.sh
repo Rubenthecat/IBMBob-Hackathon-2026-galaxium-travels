@@ -509,6 +509,34 @@ ${_codename} stable" \
   echo -e "${GREEN}✅ Docker is running.${NC}"
   echo ""
 
+  # ── Free ports used by Docker Compose before starting ────────────────────────
+  # If a previous compose run or local dev server left a process bound to one of
+  # the host ports, `docker compose up` will fail with "address already in use".
+  # Kill any occupants now so the launch is always clean.
+  # Tries lsof first (available on macOS and most Linux installs); falls back to
+  # fuser (ships with psmisc on Debian/Ubuntu/Fedora).
+  _free_port() {
+    local _port="$1"
+    local _pid
+    if command -v lsof &>/dev/null; then
+      _pid="$(lsof -ti :"$_port" 2>/dev/null)"
+    elif command -v fuser &>/dev/null; then
+      _pid="$(fuser "${_port}/tcp" 2>/dev/null)"
+    fi
+    if [ -n "$_pid" ]; then
+      echo "  (freeing port $_port — killing PID $_pid)"
+      # Use sudo only when needed (process owned by another user / root)
+      kill -9 $_pid 2>/dev/null || sudo kill -9 $_pid 2>/dev/null || true
+      sleep 1
+    fi
+  }
+
+  # Ports mapped by docker-compose.yml: postgres=5433, backend=8001,
+  # java-service=8082, frontend=5173
+  for _p in 5433 8001 8082 5173; do
+    _free_port "$_p"
+  done
+
   # ── Ensure the current user can reach the Docker socket without sudo ─────────
   # On Linux, /var/run/docker.sock is owned by the docker group. If the current
   # user isn't in that group the compose command fails with "permission denied".
