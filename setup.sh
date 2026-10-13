@@ -135,7 +135,7 @@ if [ "$MODE" = "docker" ]; then
 
   # Check docker daemon is running
   if ! docker info &>/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker daemon is not running.${NC}"
+    echo -e "${YELLOW}⚠️  Docker daemon is not running.${NC}"
     echo ""
     if [ "$PLATFORM" = "macos" ]; then
       if [ "$_docker_just_installed" = true ]; then
@@ -144,14 +144,23 @@ if [ "$MODE" = "docker" ]; then
       fi
       echo "Start Docker Desktop from your Applications folder, wait for it to"
       echo "finish starting (whale icon in the menu bar stops animating), then re-run:"
+      echo ""
+      echo "  ./setup.sh"
+      exit 1
     else
-      echo "Start the Docker daemon:"
-      echo "  sudo systemctl start docker"
-      echo "Then re-run:"
+      echo "Starting the Docker daemon automatically..."
+      sudo systemctl start docker 2>/dev/null || true
+      echo "  (waiting for Docker daemon to start...)"
+      sleep 4
+      if ! docker info &>/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker daemon still not running. Start it manually and re-run:${NC}"
+        echo "  sudo systemctl start docker"
+        echo "  ./setup.sh"
+        exit 1
+      fi
+      echo -e "${GREEN}✅ Docker daemon started.${NC}"
+      echo ""
     fi
-    echo ""
-    echo "  ./setup.sh"
-    exit 1
   fi
 
   # Check docker compose (V2 plugin) is available
