@@ -38,9 +38,19 @@ esac
 
 # Suppress interactive apt/debconf prompts on Linux (e.g. needrestart "daemons" dialog).
 # These are set only in this script's process environment — they do not persist in the user's shell.
+# NEEDRESTART_MODE=a tells needrestart to auto-restart services without prompting.
+# DEBIAN_FRONTEND=noninteractive suppresses debconf/needrestart ncurses dialogs.
+# Both vars must survive the sudo boundary — achieved by using "sudo -E" for all apt calls.
 if [ "$PLATFORM" = "linux" ]; then
   export DEBIAN_FRONTEND=noninteractive
   export NEEDRESTART_MODE=a
+  # Belt-and-suspenders: write a needrestart drop-in config so that even versions
+  # which ignore the env var will auto-restart without prompting.
+  if sudo mkdir -p /etc/needrestart/conf.d 2>/dev/null && \
+     sudo tee /etc/needrestart/conf.d/99-galaxium-auto.conf > /dev/null 2>&1 <<'EOF'
+$nrconf{restart} = 'a';
+EOF
+  then : ; fi
 fi
 
 # ─── Package manager + distro detection (Linux) ──────────────────────────────
@@ -77,7 +87,8 @@ pkg_install() {
   _yum="${_yum:-$_dnf}"
   _zyp="${_zyp:-$_yum}"
   case "$PKG_MANAGER" in
-    apt)    $SUDO_CMD apt-get install -y "$_apt" ;;
+    # Use -E to forward DEBIAN_FRONTEND and NEEDRESTART_MODE through the sudo boundary.
+    apt)    $SUDO_CMD -E apt-get install -y "$_apt" ;;
     dnf)    $SUDO_CMD dnf install -y "$_dnf" ;;
     yum)    $SUDO_CMD yum install -y "$_yum" ;;
     zypper) $SUDO_CMD zypper install -y "$_zyp" ;;
@@ -92,7 +103,7 @@ pkg_install() {
 # Refreshes the package index for the detected package manager.
 pkg_update() {
   case "$PKG_MANAGER" in
-    apt)    $SUDO_CMD apt-get update -qq ;;
+    apt)    $SUDO_CMD -E apt-get update -qq ;;
     dnf)    $SUDO_CMD dnf makecache -q ;;
     yum)    $SUDO_CMD yum makecache -q ;;
     zypper) $SUDO_CMD zypper refresh ;;
@@ -269,7 +280,7 @@ if [ "$MODE" = "docker" ]; then
           return 0
         fi
         echo "  (adding Docker's official apt repository for plugin packages...)"
-        sudo apt-get install -y ca-certificates curl gnupg lsb-release
+        sudo -E apt-get install -y ca-certificates curl gnupg lsb-release
 
         # Resolve the correct repo path: Ubuntu uses /linux/ubuntu, everything
         # else that ships apt (Debian, Raspbian, Kali, Mint…) uses /linux/debian.
@@ -302,7 +313,7 @@ if [ "$MODE" = "docker" ]; then
 https://download.docker.com/linux/${_apt_distro} \
 ${_codename} stable" \
           | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-        sudo apt-get update -qq
+        sudo -E apt-get update -qq
         ;;
 
       dnf)
@@ -369,6 +380,51 @@ ${_codename} stable" \
     return $_rc
   }
 
+  # ── Helper: install docker-buildx-plugin, handling distro package conflicts ──
+  # Some Debian/Ubuntu images ship a distro-packaged `docker-buildx` (e.g. v0.13.1)
+  # that owns /usr/libexec/docker/cli-plugins/docker-buildx.  The official
+  # docker-buildx-plugin from download.docker.com tries to install the same file,
+  # causing dpkg to abort with "trying to overwrite … which is also in package
+  # docker-buildx".  We remove the conflicting package first, then install the
+  # official plugin.  As a fallback we also try a direct binary download.
+  _install_buildx_plugin() {
+    if [ "$PKG_MANAGER" = "apt" ]; then
+      # Remove conflicting distro package if present (ignore errors if not installed)
+      if dpkg -l docker-buildx 2>/dev/null | grep -q '^ii'; then
+        echo "  (removing conflicting distro docker-buildx package...)"
+        sudo -E apt-get remove -y docker-buildx 2>/dev/null || true
+      fi
+      _ensure_docker_repo
+      if sudo -E apt-get install -y docker-buildx-plugin; then
+        return 0
+      fi
+      # apt failed — try direct binary download as a last resort
+      echo "  (apt install failed; trying direct binary download for buildx...)"
+      local _arch
+      _arch="$(dpkg --print-architecture 2>/dev/null || uname -m)"
+      case "$_arch" in
+        amd64|x86_64)   _arch="linux-amd64" ;;
+        arm64|aarch64)  _arch="linux-arm64" ;;
+        armhf|armv7l)   _arch="linux-arm-v7" ;;
+        *)               _arch="linux-amd64" ;;
+      esac
+      local _bx_url="https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.${_arch}"
+      local _bx_dest="/usr/libexec/docker/cli-plugins/docker-buildx"
+      sudo mkdir -p /usr/libexec/docker/cli-plugins
+      if curl -fsSL "$_bx_url" -o /tmp/docker-buildx && \
+         sudo install -m 0755 /tmp/docker-buildx "$_bx_dest"; then
+        rm -f /tmp/docker-buildx
+        return 0
+      fi
+      rm -f /tmp/docker-buildx
+      return 1
+    else
+      _ensure_docker_repo
+      _install_docker_pkg docker-buildx-plugin
+      return $?
+    fi
+  }
+
   # Check docker compose (V2 plugin) is available
   if ! docker compose version &>/dev/null 2>&1; then
     echo -e "${YELLOW}⚠️  Docker Compose plugin (V2) is not installed. Installing automatically...${NC}"
@@ -425,8 +481,7 @@ ${_codename} stable" \
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
-      _ensure_docker_repo
-      if _install_docker_pkg docker-buildx-plugin; then
+      if _install_buildx_plugin; then
         echo -e "${GREEN}✅ docker-buildx-plugin installed/upgraded.${NC}"
       else
         echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
