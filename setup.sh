@@ -396,17 +396,40 @@ ${_codename} stable" \
     fi
   fi
 
-  # Check docker buildx is available (required: all Dockerfiles use --platform=linux/amd64)
-  if ! docker buildx version &>/dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Docker Buildx plugin is not installed. Installing automatically...${NC}"
+  # Check docker buildx is available and meets the minimum version required by
+  # `docker compose build` (buildx >= 0.17.0).
+  # Returns 0 if buildx is present AND the version is sufficient; 1 otherwise.
+  _buildx_ok() {
+    docker buildx version &>/dev/null 2>&1 || return 1
+    local _raw _ver _major _minor _patch
+    _raw="$(docker buildx version 2>/dev/null | head -1)"
+    # `docker buildx version` output: "github.com/docker/buildx v0.17.1 ..."
+    _ver="$(echo "$_raw" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | tr -d 'v')"
+    [ -z "$_ver" ] && return 0   # unrecognised format — assume ok
+    _major="${_ver%%.*}"; _rest="${_ver#*.}"
+    _minor="${_rest%%.*}"; _patch="${_rest#*.}"
+    if [ "$_major" -gt 0 ]; then return 0; fi
+    if [ "$_minor" -gt 17 ]; then return 0; fi
+    if [ "$_minor" -eq 17 ] && [ "$_patch" -ge 0 ]; then return 0; fi
+    return 1   # version < 0.17.0
+  }
+
+  if ! _buildx_ok; then
+    # Distinguish "missing" from "too old" for the user message
+    if docker buildx version &>/dev/null 2>&1; then
+      _bx_ver="$(docker buildx version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+      echo -e "${YELLOW}⚠️  Docker Buildx ${_bx_ver} is too old (need >= v0.17.0). Upgrading automatically...${NC}"
+    else
+      echo -e "${YELLOW}⚠️  Docker Buildx plugin is not installed. Installing automatically...${NC}"
+    fi
     if [ "$PLATFORM" = "macos" ]; then
-      echo -e "${RED}❌ Update Docker Desktop to the latest version — buildx is bundled from v4+.${NC}"
+      echo -e "${RED}❌ Update Docker Desktop to the latest version — buildx >= 0.17.0 is bundled from v4.34+.${NC}"
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
       _ensure_docker_repo
       if _install_docker_pkg docker-buildx-plugin; then
-        echo -e "${GREEN}✅ docker-buildx-plugin installed.${NC}"
+        echo -e "${GREEN}✅ docker-buildx-plugin installed/upgraded.${NC}"
       else
         echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
         echo "   https://docs.docker.com/buildx/working-with-buildx/"
@@ -415,8 +438,8 @@ ${_codename} stable" \
       fi
     fi
     # Re-probe after install attempt
-    if ! docker buildx version &>/dev/null 2>&1; then
-      echo -e "${RED}❌ docker buildx still not available. Please install manually and re-run.${NC}"
+    if ! _buildx_ok; then
+      echo -e "${RED}❌ docker buildx still not available or too old (need >= v0.17.0). Please install manually and re-run.${NC}"
       exit 1
     fi
   fi
