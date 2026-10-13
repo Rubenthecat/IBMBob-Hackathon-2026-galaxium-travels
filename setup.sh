@@ -180,28 +180,41 @@ if [ "$MODE" = "docker" ]; then
     fi
   fi
 
+  # ── Helper: ensure Docker's official apt repo is configured ─────────────────
+  # docker-compose-plugin and docker-buildx-plugin are NOT in the default Debian
+  # repos — they only ship via download.docker.com. This function is idempotent.
+  _ensure_docker_apt_repo() {
+    if apt-cache show docker-compose-plugin &>/dev/null 2>&1; then
+      return 0  # repo already present
+    fi
+    echo "  (adding Docker's official apt repository for plugin packages...)"
+    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg \
+      | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/debian \
+$(lsb_release -cs) stable" \
+      | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update -qq
+  }
+
   # Check docker compose (V2 plugin) is available
   if ! docker compose version &>/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker Compose plugin (V2) is not installed.${NC}"
-    echo ""
+    echo -e "${YELLOW}⚠️  Docker Compose plugin (V2) is not installed. Installing automatically...${NC}"
     if [ "$PLATFORM" = "macos" ]; then
-      echo "Update Docker Desktop to the latest version — Compose V2 is bundled."
+      echo -e "${RED}❌ Update Docker Desktop to the latest version — Compose V2 is bundled.${NC}"
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
-      if sudo -n true 2>/dev/null || { echo -n "Grant sudo to install docker-compose-plugin? [y/N] " && read -r _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
-        echo "  (installing automatically...)"
-        sudo apt-get update -qq
-        if sudo apt-get install -y docker-compose-plugin 2>/dev/null; then
-          echo -e "${GREEN}✅ docker-compose-plugin installed.${NC}"
-        else
-          echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
-          echo "   sudo apt-get install -y docker-compose-plugin"
-          echo "Then re-run: ./setup.sh"
-          exit 1
-        fi
+      _ensure_docker_apt_repo
+      if sudo apt-get install -y docker-compose-plugin; then
+        echo -e "${GREEN}✅ docker-compose-plugin installed.${NC}"
       else
-        echo "  sudo apt-get install -y docker-compose-plugin"
+        echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
+        echo "   sudo apt-get install -y docker-compose-plugin"
         echo "Then re-run: ./setup.sh"
         exit 1
       fi
@@ -215,26 +228,18 @@ if [ "$MODE" = "docker" ]; then
 
   # Check docker buildx is available (required: all Dockerfiles use --platform=linux/amd64)
   if ! docker buildx version &>/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker Buildx plugin is not installed.${NC}"
-    echo ""
+    echo -e "${YELLOW}⚠️  Docker Buildx plugin is not installed. Installing automatically...${NC}"
     if [ "$PLATFORM" = "macos" ]; then
-      echo "Update Docker Desktop to the latest version — buildx is bundled from v4+."
+      echo -e "${RED}❌ Update Docker Desktop to the latest version — buildx is bundled from v4+.${NC}"
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
-      if sudo -n true 2>/dev/null || { echo -n "Grant sudo to install docker-buildx-plugin? [y/N] " && read -r _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
-        echo "  (installing automatically...)"
-        sudo apt-get update -qq
-        if sudo apt-get install -y docker-buildx-plugin 2>/dev/null; then
-          echo -e "${GREEN}✅ docker-buildx-plugin installed.${NC}"
-        else
-          echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
-          echo "   sudo apt-get install -y docker-buildx-plugin"
-          echo "Then re-run: ./setup.sh"
-          exit 1
-        fi
+      _ensure_docker_apt_repo
+      if sudo apt-get install -y docker-buildx-plugin; then
+        echo -e "${GREEN}✅ docker-buildx-plugin installed.${NC}"
       else
-        echo "  sudo apt-get install -y docker-buildx-plugin"
+        echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
+        echo "   sudo apt-get install -y docker-buildx-plugin"
         echo "Then re-run: ./setup.sh"
         exit 1
       fi
