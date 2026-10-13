@@ -434,6 +434,15 @@ ${_codename} stable" \
       exit 1
     else
       _ensure_docker_repo
+      # On apt systems, the distro may ship a standalone `docker-buildx` package that
+      # owns the same CLI-plugin binary as `docker-buildx-plugin` from Docker's repo.
+      # apt resolves docker-buildx-plugin as a dependency of docker-compose-plugin and
+      # tries to install both in one transaction — dpkg aborts with an overwrite conflict.
+      # Remove the conflicting distro package first so the entire install is atomic.
+      if [ "$PKG_MANAGER" = "apt" ] && dpkg -l docker-buildx 2>/dev/null | grep -q '^ii'; then
+        echo "  (removing conflicting distro docker-buildx package before installing plugins...)"
+        sudo -E apt-get remove -y docker-buildx 2>/dev/null || true
+      fi
       if _install_docker_pkg docker-compose-plugin; then
         echo -e "${GREEN}✅ docker-compose-plugin installed.${NC}"
       else
