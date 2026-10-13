@@ -99,6 +99,72 @@ if [ "$MODE" = "docker" ]; then
     exit 1
   fi
 
+  # Check docker compose (V2 plugin) is available
+  if ! docker compose version &>/dev/null 2>&1; then
+    echo -e "${RED}❌ Docker Compose plugin (V2) is not installed.${NC}"
+    echo ""
+    if [ "$PLATFORM" = "macos" ]; then
+      echo "Update Docker Desktop to the latest version — Compose V2 is bundled."
+      echo "  https://docs.docker.com/desktop/release-notes/"
+      exit 1
+    else
+      if sudo -n true 2>/dev/null || { echo -n "Grant sudo to install docker-compose-plugin? [y/N] " && read -r _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
+        echo "  (installing automatically...)"
+        sudo apt-get update -qq
+        if sudo apt-get install -y docker-compose-plugin 2>/dev/null; then
+          echo -e "${GREEN}✅ docker-compose-plugin installed.${NC}"
+        else
+          echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
+          echo "   sudo apt-get install -y docker-compose-plugin"
+          echo "Then re-run: ./setup.sh"
+          exit 1
+        fi
+      else
+        echo "  sudo apt-get install -y docker-compose-plugin"
+        echo "Then re-run: ./setup.sh"
+        exit 1
+      fi
+    fi
+    # Re-probe after install attempt
+    if ! docker compose version &>/dev/null 2>&1; then
+      echo -e "${RED}❌ docker compose still not available. Please install manually and re-run.${NC}"
+      exit 1
+    fi
+  fi
+
+  # Check docker buildx is available (required: all Dockerfiles use --platform=linux/amd64)
+  if ! docker buildx version &>/dev/null 2>&1; then
+    echo -e "${RED}❌ Docker Buildx plugin is not installed.${NC}"
+    echo ""
+    if [ "$PLATFORM" = "macos" ]; then
+      echo "Update Docker Desktop to the latest version — buildx is bundled from v4+."
+      echo "  https://docs.docker.com/desktop/release-notes/"
+      exit 1
+    else
+      if sudo -n true 2>/dev/null || { echo -n "Grant sudo to install docker-buildx-plugin? [y/N] " && read -r _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
+        echo "  (installing automatically...)"
+        sudo apt-get update -qq
+        if sudo apt-get install -y docker-buildx-plugin 2>/dev/null; then
+          echo -e "${GREEN}✅ docker-buildx-plugin installed.${NC}"
+        else
+          echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
+          echo "   sudo apt-get install -y docker-buildx-plugin"
+          echo "Then re-run: ./setup.sh"
+          exit 1
+        fi
+      else
+        echo "  sudo apt-get install -y docker-buildx-plugin"
+        echo "Then re-run: ./setup.sh"
+        exit 1
+      fi
+    fi
+    # Re-probe after install attempt
+    if ! docker buildx version &>/dev/null 2>&1; then
+      echo -e "${RED}❌ docker buildx still not available. Please install manually and re-run.${NC}"
+      exit 1
+    fi
+  fi
+
   echo -e "${GREEN}✅ Docker is running.${NC}"
   echo ""
   echo "Starting Galaxium Travels with Docker Compose..."
@@ -108,12 +174,8 @@ if [ "$MODE" = "docker" ]; then
   echo "  Frontend:  http://localhost:5173"
   echo "  API Docs:  http://localhost:8001/docs"
   echo ""
-  echo "To also start the Java Hold Service, run:"
-  echo "  docker compose --profile hold-service up --build"
-  echo ""
-
   cd "$SCRIPT_DIR"
-  exec docker compose up --build
+  exec docker compose --profile hold-service up --build
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
