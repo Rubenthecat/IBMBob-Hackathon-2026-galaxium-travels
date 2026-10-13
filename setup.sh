@@ -423,6 +423,25 @@ ${_codename} stable" \
 
   echo -e "${GREEN}✅ Docker is running.${NC}"
   echo ""
+
+  # ── Ensure the current user can reach the Docker socket without sudo ─────────
+  # On Linux, /var/run/docker.sock is owned by the docker group. If the current
+  # user isn't in that group the compose command fails with "permission denied".
+  # We add them here and use `sg docker` to activate the new group for this
+  # session without requiring a logout/login.
+  _COMPOSE_PREFIX=""
+  if [ "$PLATFORM" = "linux" ]; then
+    if ! docker info &>/dev/null 2>&1; then
+      # User can't reach the socket — add to docker group and use sg to pick it up
+      if getent group docker &>/dev/null; then
+        echo "  (adding $USER to the docker group so the socket is accessible...)"
+        sudo usermod -aG docker "$USER" 2>/dev/null || true
+      fi
+      # sg runs the command with the docker group active without a re-login
+      _COMPOSE_PREFIX="sg docker --"
+    fi
+  fi
+
   echo "Starting Galaxium Travels with Docker Compose..."
   echo "(This may take a few minutes on the first run while images are built.)"
   echo ""
@@ -431,7 +450,11 @@ ${_codename} stable" \
   echo "  API Docs:  http://localhost:8001/docs"
   echo ""
   cd "$SCRIPT_DIR"
-  exec docker compose --profile hold-service up --build
+  if [ -n "$_COMPOSE_PREFIX" ]; then
+    exec sg docker -- docker compose --profile hold-service up --build
+  else
+    exec docker compose --profile hold-service up --build
+  fi
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
