@@ -68,6 +68,7 @@ if [ "$MODE" = "docker" ]; then
   echo ""
 
   # Check docker binary
+  _docker_just_installed=false
   if ! command -v docker &>/dev/null; then
     echo -e "${RED}❌ Docker is not installed.${NC}"
     echo ""
@@ -84,42 +85,50 @@ if [ "$MODE" = "docker" ]; then
           exit 1
         fi
         brew install --cask docker
+        _docker_just_installed=true
         echo ""
-        echo -e "${YELLOW}⚠️  Docker Desktop was installed but needs to be started manually.${NC}"
-        echo "Open Docker Desktop from your Applications folder, wait for it to finish"
-        echo "starting (whale icon in the menu bar stops animating), then re-run:"
+        echo -e "${YELLOW}⚠️  Docker Desktop was installed. You must start it before we can continue.${NC}"
+        echo "Open Docker Desktop from your Applications folder and wait for it to finish"
+        echo "starting (the whale icon in the menu bar will stop animating)."
         echo ""
-        echo "  ./setup.sh"
-        exit 0
+        read -rp "Press Enter once Docker Desktop is running to continue... "
       else
-        echo "Install Docker Desktop manually: https://docs.docker.com/desktop/install/mac-install/"
+        echo ""
+        echo "No problem. Install Docker Desktop manually when you're ready:"
+        echo "  https://docs.docker.com/desktop/install/mac-install/"
         echo "Then re-run: ./setup.sh"
-        exit 1
+        exit 0
       fi
     else
       echo "Docker can be installed via apt-get."
       echo ""
-      if sudo -n true 2>/dev/null || { read -rp "Grant sudo to install Docker? [y/N] " _ans && [[ "$_ans" =~ ^[Yy]$ ]] && sudo true; }; then
+      read -rp "Would you like to install Docker now? [y/N] " _install_docker
+      if [[ "$_install_docker" =~ ^[Yy]$ ]]; then
         echo "  (installing docker.io...)"
         sudo apt-get update -qq
         if sudo apt-get install -y docker.io 2>/dev/null; then
           echo -e "${GREEN}✅ docker.io installed.${NC}"
           sudo systemctl enable --now docker 2>/dev/null || true
+          echo "  (waiting for Docker daemon to start...)"
+          sleep 4
+          _docker_just_installed=true
         else
           echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
           echo "   https://docs.docker.com/engine/install/"
           echo "Then re-run: ./setup.sh"
           exit 1
         fi
+        # Re-probe after install
+        if ! command -v docker &>/dev/null; then
+          echo -e "${RED}❌ Docker still not available after install. Please install manually and re-run.${NC}"
+          exit 1
+        fi
       else
-        echo "Install Docker manually: https://docs.docker.com/engine/install/"
+        echo ""
+        echo "No problem. Install Docker manually when you're ready:"
+        echo "  https://docs.docker.com/engine/install/"
         echo "Then re-run: ./setup.sh"
-        exit 1
-      fi
-      # Re-probe after install
-      if ! command -v docker &>/dev/null; then
-        echo -e "${RED}❌ Docker still not available after install. Please install manually and re-run.${NC}"
-        exit 1
+        exit 0
       fi
     fi
   fi
@@ -129,6 +138,10 @@ if [ "$MODE" = "docker" ]; then
     echo -e "${RED}❌ Docker daemon is not running.${NC}"
     echo ""
     if [ "$PLATFORM" = "macos" ]; then
+      if [ "$_docker_just_installed" = true ]; then
+        echo "Docker Desktop was just installed but does not appear to be running yet."
+        echo ""
+      fi
       echo "Start Docker Desktop from your Applications folder, wait for it to"
       echo "finish starting (whale icon in the menu bar stops animating), then re-run:"
     else
