@@ -108,7 +108,7 @@ if [ "$MODE" = "docker" ]; then
         sudo apt-get update -qq
         if sudo apt-get install -y docker.io 2>/dev/null; then
           echo -e "${GREEN}✅ docker.io installed.${NC}"
-          sudo systemctl enable --now docker 2>/dev/null || true
+          sudo systemctl enable --now docker || true
           echo "  (waiting for Docker daemon to start...)"
           sleep 4
           _docker_just_installed=true
@@ -149,13 +149,30 @@ if [ "$MODE" = "docker" ]; then
       exit 1
     else
       echo "Starting the Docker daemon automatically..."
-      sudo systemctl start docker 2>/dev/null || true
-      echo "  (waiting for Docker daemon to start...)"
+      # Try systemctl first (systemd), fall back to service (SysV/upstart),
+      # then fall back to launching dockerd directly (containers / WSL without systemd).
+      # Note: stderr is NOT redirected so sudo can prompt for a password if needed.
+      if sudo systemctl start docker; then
+        echo "  (systemctl start docker — waiting 4s...)"
+      elif sudo service docker start; then
+        echo "  (service docker start — waiting 4s...)"
+      else
+        echo "  (systemctl/service unavailable — starting dockerd directly...)"
+        sudo dockerd > /tmp/dockerd.log 2>&1 &
+        echo "  (waiting for dockerd to initialize...)"
+      fi
       sleep 4
-      if ! docker info &>/dev/null 2>&1; then
-        echo -e "${RED}❌ Docker daemon still not running. Start it manually and re-run:${NC}"
-        echo "  sudo systemctl start docker"
-        echo "  ./setup.sh"
+      # Use sudo docker info so socket permission doesn't cause a false failure
+      # if the current user isn't yet in the docker group.
+      if ! sudo docker info &>/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker daemon still not responding after start attempt.${NC}"
+        echo ""
+        echo "Try starting it manually in another terminal:"
+        echo "  sudo systemctl start docker    # systemd systems"
+        echo "  sudo service docker start      # SysV/upstart systems"
+        echo "  sudo dockerd &                 # minimal/container environments"
+        echo ""
+        echo "Then re-run: ./setup.sh"
         exit 1
       fi
       echo -e "${GREEN}✅ Docker daemon started.${NC}"
