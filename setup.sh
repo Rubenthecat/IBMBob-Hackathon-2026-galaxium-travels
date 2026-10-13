@@ -565,7 +565,7 @@ ${_codename} stable" \
   echo ""
   cd "$SCRIPT_DIR"
   if [ "$_USE_SUDO_DOCKER" = true ]; then
-    exec sudo -E -g docker docker compose --profile hold-service up --build
+    exec sg docker -c "docker compose --profile hold-service up --build"
   else
     exec docker compose --profile hold-service up --build
   fi
