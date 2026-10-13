@@ -36,6 +36,69 @@ case "$OS" in
     ;;
 esac
 
+# Suppress interactive apt/debconf prompts on Linux (e.g. needrestart "daemons" dialog).
+# These are set only in this script's process environment — they do not persist in the user's shell.
+if [ "$PLATFORM" = "linux" ]; then
+  export DEBIAN_FRONTEND=noninteractive
+  export NEEDRESTART_MODE=a
+fi
+
+# ─── Package manager + distro detection (Linux) ──────────────────────────────
+# Sets PKG_MANAGER: apt | dnf | yum | zypper | unknown
+# Sets DISTRO_ID:   value of ID from /etc/os-release (e.g. ubuntu, debian, fedora, amzn)
+# Used by both Docker mode (plugin installs) and Local mode (tool installs).
+PKG_MANAGER="unknown"
+DISTRO_ID="unknown"
+if [ "$PLATFORM" = "linux" ]; then
+  if [ -f /etc/os-release ]; then
+    DISTRO_ID="$(. /etc/os-release && echo "${ID:-unknown}" | tr '[:upper:]' '[:lower:]')"
+  fi
+  if command -v apt-get &>/dev/null; then
+    PKG_MANAGER="apt"
+  elif command -v dnf &>/dev/null; then
+    PKG_MANAGER="dnf"
+  elif command -v yum &>/dev/null; then
+    PKG_MANAGER="yum"
+  elif command -v zypper &>/dev/null; then
+    PKG_MANAGER="zypper"
+  fi
+fi
+
+# ─── Helper: pkg_install <pkg-apt> [pkg-dnf] [pkg-yum] [pkg-zypper] ─────────
+# Installs a package using the detected package manager.
+# If only one argument is given the same name is used for all managers.
+# Caller is responsible for having called `sudo true` first if needed.
+pkg_install() {
+  local _apt="${1}"
+  local _dnf="${2:-$1}"
+  local _yum="${3:-$2}"
+  local _zyp="${4:-$3}"
+  # _yum defaults to _dnf value; _zyp defaults to _yum value — all fall back to _apt if unset
+  _yum="${_yum:-$_dnf}"
+  _zyp="${_zyp:-$_yum}"
+  case "$PKG_MANAGER" in
+    apt)    $SUDO_CMD apt-get install -y "$_apt" ;;
+    dnf)    $SUDO_CMD dnf install -y "$_dnf" ;;
+    yum)    $SUDO_CMD yum install -y "$_yum" ;;
+    zypper) $SUDO_CMD zypper install -y "$_zyp" ;;
+    *)
+      echo -e "${RED}❌ Cannot install $_apt — unsupported package manager.${NC}"
+      return 1
+      ;;
+  esac
+}
+
+# ─── Helper: pkg_update ───────────────────────────────────────────────────────
+# Refreshes the package index for the detected package manager.
+pkg_update() {
+  case "$PKG_MANAGER" in
+    apt)    $SUDO_CMD apt-get update -qq ;;
+    dnf)    $SUDO_CMD dnf makecache -q ;;
+    yum)    $SUDO_CMD yum makecache -q ;;
+    zypper) $SUDO_CMD zypper refresh ;;
+  esac
+}
+
 echo ""
 echo -e "${BOLD}🌌 Galaxium Travels — First-Run Setup${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -100,14 +163,24 @@ if [ "$MODE" = "docker" ]; then
         exit 0
       fi
     else
-      echo "Docker can be installed via apt-get."
+      echo "Docker can be installed via your package manager (${PKG_MANAGER})."
       echo ""
       read -rp "Would you like to install Docker now? [y/N] " _install_docker
       if [[ "$_install_docker" =~ ^[Yy]$ ]]; then
-        echo "  (installing docker.io...)"
-        sudo apt-get update -qq
-        if sudo apt-get install -y docker.io 2>/dev/null; then
-          echo -e "${GREEN}✅ docker.io installed.${NC}"
+        # Package name varies by manager:
+        #   apt    — docker.io  (universe repo, ships with Debian/Ubuntu; good enough to bootstrap)
+        #   dnf    — docker     (Fedora/RHEL from Docker's own repo once added)
+        #   yum    — docker     (CentOS/RHEL 7)
+        #   zypper — docker     (openSUSE)
+        case "$PKG_MANAGER" in
+          apt)    _docker_engine_pkg="docker.io" ;;
+          *)      _docker_engine_pkg="docker" ;;
+        esac
+        echo "  (installing ${_docker_engine_pkg}...)"
+        SUDO_CMD="sudo"
+        pkg_update
+        if pkg_install "$_docker_engine_pkg" 2>/dev/null; then
+          echo -e "${GREEN}✅ ${_docker_engine_pkg} installed.${NC}"
           sudo systemctl enable --now docker || true
           echo "  (waiting for Docker daemon to start...)"
           sleep 4
@@ -180,25 +253,122 @@ if [ "$MODE" = "docker" ]; then
     fi
   fi
 
-  # ── Helper: ensure Docker's official apt repo is configured ─────────────────
-  # docker-compose-plugin and docker-buildx-plugin are NOT in the default Debian
-  # repos — they only ship via download.docker.com. This function is idempotent.
-  _ensure_docker_apt_repo() {
-    if apt-cache show docker-compose-plugin &>/dev/null 2>&1; then
-      return 0  # repo already present
-    fi
-    echo "  (adding Docker's official apt repository for plugin packages...)"
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg \
-      | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/debian \
-$(lsb_release -cs) stable" \
-      | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -qq
+  # ── Helper: ensure Docker's official repo is configured (distro-aware) ──────
+  # docker-compose-plugin and docker-buildx-plugin ship via download.docker.com,
+  # not the default distro repos. This function is idempotent and handles:
+  #   apt  — Debian, Ubuntu, Raspbian, Linux Mint, Pop!_OS, Kali, etc.
+  #   dnf  — Fedora, RHEL 8+, CentOS Stream 8+, Rocky Linux, AlmaLinux, Amazon Linux 2023
+  #   yum  — RHEL/CentOS 7, Amazon Linux 2
+  #   zypper — openSUSE Leap / Tumbleweed
+  _ensure_docker_repo() {
+    _detect_pkg_manager
+
+    case "$PKG_MANAGER" in
+
+      apt)
+        # Already present if apt-cache knows the package
+        if apt-cache show docker-compose-plugin &>/dev/null 2>&1; then
+          return 0
+        fi
+        echo "  (adding Docker's official apt repository for plugin packages...)"
+        sudo apt-get install -y ca-certificates curl gnupg lsb-release
+
+        # Resolve the correct repo path: Ubuntu uses /linux/ubuntu, everything
+        # else that ships apt (Debian, Raspbian, Kali, Mint…) uses /linux/debian.
+        local _apt_distro
+        case "$DISTRO_ID" in
+          ubuntu|linuxmint|pop)  _apt_distro="ubuntu" ;;
+          *)                     _apt_distro="debian" ;;
+        esac
+
+        # Codename: prefer UBUNTU_CODENAME (set on Ubuntu/Mint) over VERSION_CODENAME
+        # (set on Debian/others); fall back to lsb_release.
+        local _codename
+        _codename="$(. /etc/os-release 2>/dev/null && \
+          echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")"
+        if [ -z "$_codename" ] && command -v lsb_release &>/dev/null; then
+          _codename="$(lsb_release -cs)"
+        fi
+        if [ -z "$_codename" ]; then
+          echo -e "${RED}❌ Cannot determine OS codename. Add the Docker repo manually:${NC}"
+          echo "   https://docs.docker.com/engine/install/"
+          exit 1
+        fi
+
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL "https://download.docker.com/linux/${_apt_distro}/gpg" \
+          | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/${_apt_distro} \
+${_codename} stable" \
+          | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update -qq
+        ;;
+
+      dnf)
+        # Fedora / RHEL 8+ / CentOS Stream / Rocky / Alma / Amazon Linux 2023
+        if dnf list installed docker-compose-plugin &>/dev/null 2>&1; then
+          return 0
+        fi
+        echo "  (adding Docker's official dnf repository for plugin packages...)"
+        sudo dnf -y install dnf-plugins-core
+        # Amazon Linux 2023 uses its own repo; everything else uses the CE repo.
+        case "$DISTRO_ID" in
+          amzn)
+            sudo dnf config-manager --add-repo \
+              https://download.docker.com/linux/rhel/docker-ce.repo
+            ;;
+          *)
+            sudo dnf config-manager --add-repo \
+              https://download.docker.com/linux/fedora/docker-ce.repo
+            ;;
+        esac
+        sudo dnf makecache -q
+        ;;
+
+      yum)
+        # RHEL / CentOS 7, Amazon Linux 2
+        if yum list installed docker-compose-plugin &>/dev/null 2>&1; then
+          return 0
+        fi
+        echo "  (adding Docker's official yum repository for plugin packages...)"
+        sudo yum install -y yum-utils
+        sudo yum-config-manager --add-repo \
+          https://download.docker.com/linux/centos/docker-ce.repo
+        sudo yum makecache -q
+        ;;
+
+      zypper)
+        # openSUSE Leap / Tumbleweed
+        if zypper search -i docker-compose-plugin &>/dev/null 2>&1; then
+          return 0
+        fi
+        echo "  (adding Docker's official zypper repository for plugin packages...)"
+        sudo zypper addrepo https://download.docker.com/linux/sles/docker-ce.repo || true
+        sudo zypper refresh
+        ;;
+
+      *)
+        echo -e "${YELLOW}⚠️  Unrecognised package manager — cannot add Docker repo automatically.${NC}"
+        echo "   Add it manually: https://docs.docker.com/engine/install/"
+        ;;
+    esac
+  }
+
+  # ── Helper: install a Docker plugin package (distro-aware) ──────────────────
+  # Usage: _install_docker_pkg <package-name>
+  # Docker mode never goes through the Local mode sudo prompt, so SUDO_CMD is
+  # not set here. Temporarily set it to "sudo" for the pkg_install helper.
+  _install_docker_pkg() {
+    local _pkg="$1"
+    local _saved_sudo="${SUDO_CMD:-}"
+    SUDO_CMD="sudo"
+    pkg_install "$_pkg"
+    local _rc=$?
+    SUDO_CMD="$_saved_sudo"
+    return $_rc
   }
 
   # Check docker compose (V2 plugin) is available
@@ -209,12 +379,12 @@ $(lsb_release -cs) stable" \
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
-      _ensure_docker_apt_repo
-      if sudo apt-get install -y docker-compose-plugin; then
+      _ensure_docker_repo
+      if _install_docker_pkg docker-compose-plugin; then
         echo -e "${GREEN}✅ docker-compose-plugin installed.${NC}"
       else
         echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
-        echo "   sudo apt-get install -y docker-compose-plugin"
+        echo "   https://docs.docker.com/compose/install/linux/"
         echo "Then re-run: ./setup.sh"
         exit 1
       fi
@@ -234,12 +404,12 @@ $(lsb_release -cs) stable" \
       echo "  https://docs.docker.com/desktop/release-notes/"
       exit 1
     else
-      _ensure_docker_apt_repo
-      if sudo apt-get install -y docker-buildx-plugin; then
+      _ensure_docker_repo
+      if _install_docker_pkg docker-buildx-plugin; then
         echo -e "${GREEN}✅ docker-buildx-plugin installed.${NC}"
       else
         echo -e "${RED}❌ Auto-install failed. Install manually:${NC}"
-        echo "   sudo apt-get install -y docker-buildx-plugin"
+        echo "   https://docs.docker.com/buildx/working-with-buildx/"
         echo "Then re-run: ./setup.sh"
         exit 1
       fi
@@ -272,7 +442,7 @@ echo ""
 
 # ─── Linux: request sudo upfront ────────────────────────────────────────────
 if [ "$PLATFORM" = "linux" ]; then
-  echo -e "${YELLOW}Some tools may need to be installed via apt-get, which requires sudo.${NC}"
+  echo -e "${YELLOW}Some tools may need to be installed via your package manager (${PKG_MANAGER}), which requires sudo.${NC}"
   echo -n "Grant sudo access for this session? [y/N] "
   read -r SUDO_OK
   if [[ "$SUDO_OK" =~ ^[Yy]$ ]]; then
@@ -283,17 +453,19 @@ if [ "$PLATFORM" = "linux" ]; then
     trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null' EXIT
     SUDO_CMD="sudo"
   else
-    echo -e "${YELLOW}⚠️  Skipping sudo. Any missing apt-get tools will not be installed.${NC}"
+    echo -e "${YELLOW}⚠️  Skipping sudo. Any missing tools will not be installed automatically.${NC}"
     SUDO_CMD=""
   fi
 fi
 
 # ─── Helper: require_tool ────────────────────────────────────────────────────
-# Usage: require_tool <binary> <brew-pkg> <apt-pkg> [description]
+# Usage: require_tool <binary> <brew-pkg> <linux-pkg> [description]
+# <linux-pkg> is used as the package name for all Linux package managers.
+# For packages with different names per manager use pkg_install directly.
 require_tool() {
   local binary="$1"
   local brew_pkg="$2"
-  local apt_pkg="$3"
+  local linux_pkg="$3"
   local desc="${4:-$binary}"
 
   if command -v "$binary" &>/dev/null; then
@@ -312,11 +484,11 @@ require_tool() {
     brew install "$brew_pkg"
   elif [ "$PLATFORM" = "linux" ]; then
     if [ -z "$SUDO_CMD" ]; then
-      echo -e "${RED}❌ Cannot install $desc without sudo. Please install it manually: apt-get install $apt_pkg${NC}"
+      echo -e "${RED}❌ Cannot install $desc without sudo. Please install it manually.${NC}"
       return 1
     fi
-    $SUDO_CMD apt-get update -qq
-    $SUDO_CMD apt-get install -y "$apt_pkg"
+    pkg_update
+    pkg_install "$linux_pkg"
   fi
 
   if command -v "$binary" &>/dev/null; then
@@ -329,7 +501,9 @@ require_tool() {
 
 # ─── Helper: install_node_linux ──────────────────────────────────────────────
 # Ensures a modern Node.js (with npm) is on PATH.
-# Uses the NodeSource setup script for Node 20 LTS when node/npm is missing.
+# apt  — NodeSource setup script (Node 20 LTS)
+# dnf/yum — NodeSource rpm setup script
+# zypper  — NodeSource rpm setup script (SLES/openSUSE)
 install_node_linux() {
   # If both binaries are already present, nothing to do
   if command -v node &>/dev/null && command -v npm &>/dev/null; then
@@ -342,18 +516,39 @@ install_node_linux() {
 
   if [ -z "$SUDO_CMD" ]; then
     echo -e "${RED}❌ Cannot install Node.js without sudo. Please install it manually:${NC}"
-    echo "   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
-    echo "   sudo apt-get install -y nodejs"
+    echo "   https://nodejs.org/en/download/package-manager"
     exit 1
   fi
 
+  # Ensure curl is available first (used by every NodeSource path)
   if ! command -v curl &>/dev/null; then
-    $SUDO_CMD apt-get update -qq
-    $SUDO_CMD apt-get install -y curl
+    pkg_update
+    pkg_install curl
   fi
 
-  curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
-  $SUDO_CMD apt-get install -y nodejs
+  case "$PKG_MANAGER" in
+    apt)
+      curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
+      $SUDO_CMD apt-get install -y nodejs
+      ;;
+    dnf)
+      curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
+      $SUDO_CMD dnf install -y nodejs
+      ;;
+    yum)
+      curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
+      $SUDO_CMD yum install -y nodejs
+      ;;
+    zypper)
+      curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_CMD -E bash -
+      $SUDO_CMD zypper install -y nodejs20
+      ;;
+    *)
+      echo -e "${RED}❌ Cannot install Node.js automatically on this system.${NC}"
+      echo "   Install manually: https://nodejs.org/en/download/package-manager"
+      exit 1
+      ;;
+  esac
 
   if command -v node &>/dev/null && command -v npm &>/dev/null; then
     echo -e "${GREEN}✅ Node.js $(node --version) and npm $(npm --version) installed successfully.${NC}"
@@ -412,17 +607,22 @@ elif [ "$PLATFORM" = "linux" ]; then
 fi
 
 # ─── Linux: ensure python3-venv is available ────────────────────────────────
-# On Debian/Ubuntu, python3 does not ship with ensurepip; the venv module
-# needs the matching python3.X-venv package or the generic python3-venv.
+# On Debian/Ubuntu, python3 does not ship with ensurepip — needs python3.X-venv.
+# On RPM-based distros (Fedora, RHEL, etc.) and openSUSE, venv ships with the
+# standard python3 package so this block is a no-op there.
 if [ "$PLATFORM" = "linux" ] && [ -n "$SUDO_CMD" ]; then
-  PYTHON_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-  VENV_PKG="python${PYTHON_VER}-venv"
   if ! python3 -m venv --help &>/dev/null 2>&1 || ! python3 -c "import ensurepip" &>/dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  python3 venv/ensurepip not available. Installing ${VENV_PKG}...${NC}"
-    $SUDO_CMD apt-get update -qq
-    if ! $SUDO_CMD apt-get install -y "$VENV_PKG" 2>/dev/null; then
-      # Fallback to the generic package name
-      $SUDO_CMD apt-get install -y python3-venv
+    if [ "$PKG_MANAGER" = "apt" ]; then
+      PYTHON_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+      VENV_PKG="python${PYTHON_VER}-venv"
+      echo -e "${YELLOW}⚠️  python3 venv/ensurepip not available. Installing ${VENV_PKG}...${NC}"
+      pkg_update
+      if ! $SUDO_CMD apt-get install -y "$VENV_PKG" 2>/dev/null; then
+        $SUDO_CMD apt-get install -y python3-venv
+      fi
+    else
+      # On dnf/yum/zypper systems venv is part of python3 — nothing to install.
+      echo -e "${YELLOW}⚠️  python3 venv not working. Try: $SUDO_CMD $PKG_MANAGER install -y python3${NC}"
     fi
   else
     echo -e "${GREEN}✅ python3 venv support confirmed.${NC}"
@@ -435,30 +635,37 @@ _java_major_version() {
 }
 
 if [ "$PLATFORM" = "linux" ]; then
+  # Resolve package names per manager:
+  #   apt    — openjdk-21-jdk / openjdk-17-jdk      (Debian, Ubuntu)
+  #   dnf    — java-21-openjdk-devel / java-17-...   (Fedora, RHEL, Rocky, Alma, Amazon)
+  #   yum    — java-21-openjdk-devel / java-17-...   (RHEL/CentOS 7, Amazon Linux 2)
+  #   zypper — java-21-openjdk-devel / java-17-...   (openSUSE)
+  case "$PKG_MANAGER" in
+    apt)    _java21_pkg="openjdk-21-jdk";         _java17_pkg="openjdk-17-jdk" ;;
+    *)      _java21_pkg="java-21-openjdk-devel";  _java17_pkg="java-17-openjdk-devel" ;;
+  esac
+
+  _install_java_linux() {
+    pkg_update
+    if ! pkg_install "$_java21_pkg" 2>/dev/null; then
+      if ! pkg_install "$_java17_pkg" 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  Could not install Java automatically. Please install manually:${NC}"
+        echo "   e.g. sudo $PKG_MANAGER install -y $_java17_pkg"
+        echo "   or via SDKMAN: sdk install java 17.0.x-tem"
+      fi
+    fi
+  }
+
   if command -v java &>/dev/null; then
     _jv="$(_java_major_version)"
     if [ "$_jv" = "17" ] || [ "$_jv" = "21" ]; then
       echo -e "${GREEN}✅ Java $_jv already installed — skipping.${NC}"
     else
       echo -e "${YELLOW}⚠️  Java $_jv found but Hold Service requires 17 or 21. Attempting install...${NC}"
-      $SUDO_CMD apt-get update -qq
-      if ! $SUDO_CMD apt-get install -y openjdk-21-jdk 2>/dev/null; then
-        if ! $SUDO_CMD apt-get install -y openjdk-17-jdk 2>/dev/null; then
-          echo -e "${YELLOW}⚠️  Could not install Java automatically. Please install manually:${NC}"
-          echo "   sudo apt-get install -y openjdk-17-jdk"
-          echo "   or via SDKMAN: sdk install java 17.0.x-tem"
-        fi
-      fi
+      _install_java_linux
     fi
   else
-    $SUDO_CMD apt-get update -qq
-    if ! $SUDO_CMD apt-get install -y openjdk-21-jdk 2>/dev/null; then
-      if ! $SUDO_CMD apt-get install -y openjdk-17-jdk 2>/dev/null; then
-        echo -e "${YELLOW}⚠️  Could not install Java automatically. Please install manually:${NC}"
-        echo "   sudo apt-get install -y openjdk-17-jdk"
-        echo "   or via SDKMAN: sdk install java 17.0.x-tem"
-      fi
-    fi
+    _install_java_linux
   fi
 elif [ "$PLATFORM" = "macos" ]; then
   brew install openjdk@21
