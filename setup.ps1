@@ -274,8 +274,9 @@ if (-not $mvnCmd) {
     exit 1
 }
 
-# Inject PYTHON_BACKEND_URL so the hold service can reach the Python backend.
-$env:PYTHON_BACKEND_URL = "http://localhost:8001"
+# Inject env vars so the hold service can reach the Python backend and use a local DB path.
+$env:PYTHON_BACKEND_URL    = "http://localhost:8001"
+$env:SPRING_DATASOURCE_URL = "jdbc:sqlite:" + (Join-Path $javaDir "holds.db")
 
 $javaProc = Start-Process -FilePath $mvnCmd `
     -ArgumentList "-q", "spring-boot:run" `
