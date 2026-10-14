@@ -158,7 +158,7 @@ if [ -d "$HOLD_SERVICE_DIR" ]; then
             echo "   Using Java from: $JAVA_HOME_FOR_MAVEN"
         fi
         cd "$HOLD_SERVICE_DIR"
-        JAVA_HOME="${JAVA_HOME_FOR_MAVEN:-$JAVA_HOME}" PYTHON_BACKEND_URL=http://localhost:8001 $HOLD_SERVICE_CMD > java.log 2>&1 &
+        JAVA_HOME="${JAVA_HOME_FOR_MAVEN:-$JAVA_HOME}" PYTHON_BACKEND_URL=http://localhost:8001 SPRING_DATASOURCE_URL=jdbc:sqlite:./holds.db $HOLD_SERVICE_CMD > java.log 2>&1 &
         JAVA_PID=$!
 
         # Wait for Java service to start and verify
