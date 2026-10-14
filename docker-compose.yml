@@ -35,7 +35,6 @@ services:
       retries: 3
 
   java-service:
-    profiles: [hold-service]
     build: ./booking_system_inventory_hold_service
     platform: linux/amd64
     ports:
@@ -54,10 +53,7 @@ services:
       - java_data:/app/data
 
   frontend:
-    build:
-      context: ./booking_system_frontend
-      args:
-        VITE_API_URL: "http://localhost:8001"
+    build: ./booking_system_frontend
     platform: linux/amd64
     ports:
       - "5173:8080"
