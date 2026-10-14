@@ -31,7 +31,7 @@ EXPOSE 8080
 
 # Set environment variables
 ENV SPRING_DATASOURCE_URL=jdbc:sqlite:/app/data/holds.db
-ENV PYTHON_BACKEND_URL=http://python-backend:8000
+ENV PYTHON_BACKEND_URL=http://backend:8080
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

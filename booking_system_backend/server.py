@@ -46,7 +46,6 @@ app = FastAPI(
     description="API for booking interplanetary flights. Swagger UI available at /docs",
     version="1.0.0",
     lifespan=lifespan,
-    root_path="/api"  # Add this for ALB routing
 )
 
 # Get allowed origins from environment
