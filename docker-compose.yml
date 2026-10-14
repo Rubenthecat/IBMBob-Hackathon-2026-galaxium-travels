@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:14-alpine
     environment:
-      POSTGRES_DB: galaxium_booking
-      POSTGRES_USER: galaxium
-      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: "galaxium_booking"
+      POSTGRES_USER: "galaxium"
+      POSTGRES_PASSWORD: "local_dev_password"
     ports:
       - "5433:5432"
     volumes:
@@ -21,9 +21,9 @@ services:
     ports:
       - "8001:8080"
     environment:
-      DATABASE_URL: postgresql://galaxium:local_dev_password@postgres:5432/galaxium_booking
-      CORS_ORIGINS: http://localhost:5173,http://localhost
-      JAVA_SERVICE_URL: http://java-service:8080
+      DATABASE_URL: "postgresql://galaxium:local_dev_password@postgres:5432/galaxium_booking"
+      CORS_ORIGINS: "http://localhost:5173,http://localhost"
+      JAVA_SERVICE_URL: "http://java-service:8080"
       SEED_DEMO_DATA: "true"
     depends_on:
       postgres:
@@ -41,8 +41,8 @@ services:
     ports:
       - "8082:8080"
     environment:
-      PYTHON_BACKEND_URL: http://backend:8080
-      SPRING_DATASOURCE_URL: jdbc:sqlite:/app/data/holds.db
+      PYTHON_BACKEND_URL: "http://backend:8080"
+      SPRING_DATASOURCE_URL: "jdbc:sqlite:/app/data/holds.db"
     depends_on:
       - backend
     healthcheck:
@@ -57,7 +57,7 @@ services:
     build:
       context: ./booking_system_frontend
       args:
-        VITE_API_URL: http://localhost:8001
+        VITE_API_URL: "http://localhost:8001"
     platform: linux/amd64
     ports:
       - "5173:8080"
