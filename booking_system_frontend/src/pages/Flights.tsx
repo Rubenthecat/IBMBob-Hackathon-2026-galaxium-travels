@@ -29,7 +29,7 @@ export const Flights = () => {
     setIsLoading(true);
     try {
       const data = await getFlights(filters);
-      setFlights(data);
+      setFlights(Array.isArray(data) ? data : []);
     } catch (err) {
       const error = err as ErrorResponse;
       if (retryCount < MAX_RETRIES) {
