@@ -238,6 +238,25 @@ def create_booking_from_hold(hold_data: dict, db: Session = Depends(get_db)):
 
 # ==================== JAVA SERVICE PROXY ENDPOINTS ====================
 
+@app.get("/java-health", tags=["Health"])
+async def java_health_check():
+    """Proxy health check for the Java hold service.
+
+    Called by the frontend on cold start to trigger scale-from-zero on the
+    Java service. Returns gracefully even if Java is still starting up.
+    """
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"{JAVA_SERVICE_URL}/api/v1/health",
+                timeout=5.0
+            )
+            response.raise_for_status()
+            return {"status": "UP", "service": "java-hold-service"}
+        except (httpx.TimeoutException, httpx.HTTPError):
+            return {"status": "starting", "service": "java-hold-service"}
+
+
 @app.post("/quotes", tags=["Quotes"])
 async def create_quote(quote_data: dict):
     """Proxy endpoint to create a quote in the Java hold service."""

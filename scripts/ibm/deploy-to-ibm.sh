@@ -457,6 +457,7 @@ deploy_frontend() {
             --max-scale "$MAX_SCALE" \
             --scale-down-delay "$BACKEND_SCALE_DOWN_DELAY" \
             --env BACKEND_URL="http://${BACKEND_APP}" \
+            --env NGINX_RESOLVER="172.21.0.10" \
             --wait
     else
         print_info "Creating new frontend application..."
@@ -470,7 +471,8 @@ deploy_frontend() {
             --min-scale "$MIN_SCALE" \
             --max-scale "$MAX_SCALE" \
             --scale-down-delay "$BACKEND_SCALE_DOWN_DELAY" \
-            --env BACKEND_URL="http://${BACKEND_APP}:8080" \
+            --env BACKEND_URL="http://${BACKEND_APP}" \
+            --env NGINX_RESOLVER="172.21.0.10" \
             --wait
     fi
     
