@@ -4,9 +4,9 @@
 # Environment variables mirror deploy-to-ibm.sh — set any of these to override:
 #   PROJECT_NAME, REGION, RESOURCE_GROUP, APP_PREFIX
 
-PROJECT_NAME="${PROJECT_NAME:-galaxium-travel-services-maxjesch}"
+PROJECT_NAME="${PROJECT_NAME:ruben-guerra-hackathon2026}"
 REGION="${REGION:-us-south}"
-RESOURCE_GROUP="${RESOURCE_GROUP:-max_jesch_rg}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-hackathon2026}"
 APP_PREFIX="${APP_PREFIX:-}"
 
 BACKEND_APP="${APP_PREFIX}galaxium-backend"
