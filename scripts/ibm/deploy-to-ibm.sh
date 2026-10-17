@@ -12,12 +12,38 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-PROJECT_NAME="${PROJECT_NAME:-galaxium-travel-services-maxjesch}"
-REGION="${REGION:-us-south}"
-RESOURCE_GROUP="${RESOURCE_GROUP:-max_jesch_rg}"
-REGISTRY_NAMESPACE="${REGISTRY_NAMESPACE:-galaxium}"
-APP_PREFIX="${APP_PREFIX:-}"  # Optional prefix for app names (e.g., "max-" for shared environments)
+# Configuration — prompt the user for each value, showing the default in brackets.
+# If the user just presses Enter the default is used; env-var overrides are respected.
+prompt_config() {
+    local var_name="$1"
+    local default_val="$2"
+    local prompt_text="$3"
+
+    # Honour a value already exported in the environment
+    local current_val="${!var_name}"
+    if [ -n "$current_val" ]; then
+        echo -e "${BLUE}ℹ $prompt_text: using env override '${current_val}'${NC}"
+        return
+    fi
+
+    read -r -p "  $prompt_text [${default_val}]: " input
+    if [ -z "$input" ]; then
+        printf -v "$var_name" '%s' "$default_val"
+    else
+        printf -v "$var_name" '%s' "$input"
+    fi
+}
+
+echo -e "\n${BLUE}========================================${NC}"
+echo -e "${BLUE} Galaxium Travels — Deployment Config  ${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${YELLOW}Press Enter to accept the default shown in [brackets].${NC}\n"
+
+prompt_config PROJECT_NAME  "galaxium-travel-services"  "Code Engine project name"
+prompt_config REGION        "us-south"                  "IBM Cloud region"
+prompt_config RESOURCE_GROUP "Default"                  "Resource group"
+prompt_config REGISTRY_NAMESPACE "galaxium"             "Container Registry namespace (must be globally unique)"
+prompt_config APP_PREFIX    ""                           "App name prefix (leave empty for none, e.g. 'max-' in shared envs)"
 
 # Application names
 BACKEND_APP="${APP_PREFIX}galaxium-backend"
@@ -120,6 +146,18 @@ target_environment() {
     ibmcloud target -r "$REGION"
     
     print_info "Targeting resource group: $RESOURCE_GROUP"
+    if ! ibmcloud resource group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+        print_warning "Resource group '$RESOURCE_GROUP' does not exist"
+        read -r -p "  Would you like to create it? (y/n): " create_rg
+        if [ "$create_rg" = "y" ]; then
+            print_info "Creating resource group: $RESOURCE_GROUP"
+            ibmcloud resource group-create "$RESOURCE_GROUP"
+            print_success "Resource group created: $RESOURCE_GROUP"
+        else
+            print_error "Cannot proceed without a resource group"
+            exit 1
+        fi
+    fi
     ibmcloud target -g "$RESOURCE_GROUP"
     
     print_success "Environment targeted"
@@ -418,7 +456,7 @@ deploy_frontend() {
             --min-scale "$MIN_SCALE" \
             --max-scale "$MAX_SCALE" \
             --scale-down-delay "$BACKEND_SCALE_DOWN_DELAY" \
-            --env BACKEND_URL="http://${BACKEND_APP}:8080" \
+            --env BACKEND_URL="http://${BACKEND_APP}" \
             --wait
     else
         print_info "Creating new frontend application..."
