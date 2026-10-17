@@ -86,6 +86,7 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
             --env SEED_DEMO_DATA=true \
             --wait
     else
@@ -99,6 +100,7 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
             --env SEED_DEMO_DATA=true \
             --wait
     fi
@@ -108,7 +110,9 @@ main() {
     
     # Deploy Java service
     print_info "Deploying Java hold service..."
-    local backend_cluster_url="http://${BACKEND_APP}.${PROJECT_NAME}.svc.cluster.local"
+    # Short-form internal DNS: apps in the same Code Engine project resolve by
+    # app name alone (no .svc.cluster.local suffix needed).
+    local backend_cluster_url="http://${BACKEND_APP}"
 
     if ibmcloud ce application get -n "$JAVA_APP" >/dev/null 2>&1; then
         ibmcloud ce application update \
@@ -120,6 +124,8 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
+            --visibility project \
             --env PYTHON_BACKEND_URL="$backend_cluster_url" \
             --wait
     else
@@ -132,6 +138,8 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
+            --visibility project \
             --env PYTHON_BACKEND_URL="$backend_cluster_url" \
             --wait
     fi
@@ -141,7 +149,7 @@ main() {
     
     # Update backend with Java URL
     print_info "Configuring backend to use Java service..."
-    local java_cluster_url="http://${JAVA_APP}.${PROJECT_NAME}.svc.cluster.local"
+    local java_cluster_url="http://${JAVA_APP}"
     ibmcloud ce application update \
         --name "$BACKEND_APP" \
         --env JAVA_SERVICE_URL="$java_cluster_url" \
@@ -159,6 +167,8 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
+            --env BACKEND_URL="http://${BACKEND_APP}:8080" \
             --wait
     else
         ibmcloud ce application create \
@@ -170,17 +180,20 @@ main() {
             --port 8080 \
             --min-scale 0 \
             --max-scale 3 \
+            --scale-down-delay 1800 \
+            --env BACKEND_URL="http://${BACKEND_APP}:8080" \
             --wait
     fi
     
     FRONTEND_URL=$(ibmcloud ce application get -n "$FRONTEND_APP" --output json | jq -r '.status.url')
     print_success "Frontend deployed: $FRONTEND_URL"
     
-    # Update CORS
+    # Update CORS — include both HTTP and HTTPS variants since Code Engine
+    # public URLs are always HTTPS.
     print_info "Configuring CORS..."
     ibmcloud ce application update \
         --name "$BACKEND_APP" \
-        --env CORS_ORIGINS="$FRONTEND_URL,https://$FRONTEND_URL" \
+        --env CORS_ORIGINS="${FRONTEND_URL},https://${FRONTEND_URL##http://}" \
         --wait
     
     # Done!
