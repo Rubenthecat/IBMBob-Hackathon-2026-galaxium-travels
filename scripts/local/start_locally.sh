@@ -65,12 +65,22 @@ cd booking_system_backend
 # Check if virtual environment exists, create if not
 if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
-    python3 -m venv .venv
+    if ! python3 -m venv .venv; then
+        echo "❌ Failed to create virtual environment."
+        echo "   On Debian/Ubuntu, run:  sudo apt-get install -y python3-venv"
+        echo "   Then re-run: ./setup.sh"
+        exit 1
+    fi
 fi
 
 # Activate virtual environment and install dependencies
+if [ ! -f ".venv/bin/activate" ]; then
+    echo "❌ Virtual environment activation script not found."
+    echo "   Delete booking_system_backend/.venv and re-run: ./setup.sh"
+    exit 1
+fi
 source .venv/bin/activate
-pip install -q -r requirements.txt
+.venv/bin/python3 -m pip install -q -r requirements.txt
 
 # Start backend server in background using venv Python
 .venv/bin/python server.py > backend.log 2>&1 &
@@ -148,7 +158,7 @@ if [ -d "$HOLD_SERVICE_DIR" ]; then
             echo "   Using Java from: $JAVA_HOME_FOR_MAVEN"
         fi
         cd "$HOLD_SERVICE_DIR"
-        JAVA_HOME="${JAVA_HOME_FOR_MAVEN:-$JAVA_HOME}" PYTHON_BACKEND_URL=http://localhost:8001 $HOLD_SERVICE_CMD > java.log 2>&1 &
+        JAVA_HOME="${JAVA_HOME_FOR_MAVEN:-$JAVA_HOME}" PYTHON_BACKEND_URL=http://localhost:8001 SPRING_DATASOURCE_URL=jdbc:sqlite:./holds.db $HOLD_SERVICE_CMD > java.log 2>&1 &
         JAVA_PID=$!
 
         # Wait for Java service to start and verify
@@ -178,6 +188,14 @@ fi
 
 # Start Frontend
 echo -e "${BLUE}🎨 Starting Frontend Server...${NC}"
+
+if ! command -v npm &> /dev/null; then
+    echo "❌ npm is not installed. Cannot start the frontend."
+    echo "   Install Node.js (which includes npm) and re-run: ./setup.sh"
+    kill $BACKEND_PID 2>/dev/null
+    exit 1
+fi
+
 cd booking_system_frontend
 
 # Install dependencies if node_modules doesn't exist

@@ -4,7 +4,7 @@ A demo interplanetary flight-booking app that mimics a real enterprise system. I
 
 When you are asked to create a plan while in agent mode, do other things you need to do, like gathering data from a CLI and then explicitly switch to plan mode. 
 
-When creating planning documents, save them in the `Artifacts/` folder in all caps (e.g. `Artifacts/MY-PLAN.md`). Do not place plan files at the repository root.
+When creating planning documents, save them in the `Artifacts/BOB Plans` folder in all caps and numbered based on what plan number it is (e.g. `Artifacts/BOB Plans/#1. MY-PLAN.md`). Do not place plan files at the repository root.
 
 Before you start building anything look for information about tests and verification
 
@@ -20,7 +20,7 @@ For any exploration task, use subagents. E.g. when you are asked to create an on
 - **`SEED_DEMO_DATA=true` re-seeds on every start** — set to `false` if you need data to survive a restart locally.
 - **Tests must patch `SessionLocal` in two places** — [`conftest.py` lines 49–50](booking_system_backend/tests/conftest.py:49) patches both `db.SessionLocal` and `server.SessionLocal`. Patching only one leaves the MCP tools hitting the real DB.
 - **Java hold service requires Java 17 or 21** — Lombok does not support Java 22+. The start script auto-detects sdkman candidates; set `JAVA_HOME` manually if needed.
-- **`docker-compose.yml` Java service is behind a profile** — it uses `profiles: [hold-service]`. Run `docker compose --profile hold-service up` to include it, or use `e2e/docker-compose.e2e.yml` which enables it unconditionally.
+- **`docker-compose.yml` Java service starts by default** — the `profiles: [hold-service]` gate has been removed. A plain `docker compose up` now starts all four services (`postgres`, `backend`, `java-service`, `frontend`). Use `e2e/docker-compose.e2e.yml` for the isolated e2e stack.
 - **Python proxy swallows Java 404s** — proxy endpoints in `server.py` catch `httpx.HTTPError` and return `{"error": "..."}` with HTTP 200. Callers must check the response body, not just the status code (see [`test_holds.py` line 82](e2e/test_holds.py:82)).
 - **`holds.db` and `booking.db` are committed artefacts** — do not delete; they seed local dev. They are regenerated on startup via `spring.jpa.hibernate.ddl-auto=update` and `SEED_DEMO_DATA=true`.
 - **Some of the rules above are enforced by lifecycle hooks, not just documented** — see [`.bob/settings.json`](.bob/settings.json). Deleting a `.db` file and committing while the backend suite is red are both blocked outright. **If a tool call is reported as blocked, read `.bob/hooks/state/.last-block` for the reason** — the hook writes the full explanation there.
@@ -77,7 +77,7 @@ If `docker ps` errors with "cannot connect to the Docker daemon", `colima start`
 
 - **Start all locally:** `./start.sh` (wraps `scripts/local/start_locally.sh`)
 - **Docker Compose (backend + frontend):** `docker compose up`
-- **Docker Compose (+ Java hold service):** `docker compose --profile hold-service up`
+- **Docker Compose (all services):** `docker compose up`
 
 ### Deploy
 
