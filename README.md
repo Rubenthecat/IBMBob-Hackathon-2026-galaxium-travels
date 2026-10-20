@@ -30,11 +30,6 @@ Clone the repo and run a single command — the script will ask whether you want
 ```
 > **Windows requirement:** `winget` (used for auto-installing tools in Local mode) requires Windows 10 version 1709 or newer.
 
-### Already have Docker? (any platform)
-```bash
-docker compose up --build
-```
-> The Java Hold Service starts automatically — no extra flags needed.
 
 The scripts detect your platform, prompt for a mode, handle all dependency installation (Python, Node, Java 21, Maven), and launch all services. No manual setup needed.
 
