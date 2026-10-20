@@ -378,9 +378,7 @@ deploy_backend() {
 deploy_java_service() {
     print_header "Deploying Java Hold Service"
     
-    # In Code Engine, apps in the same project are reachable by app name alone
-    local backend_cluster_url="http://${BACKEND_APP}"
-    
+    local backend_cluster_url="$BACKEND_URL"
     # Check if app exists
     if ibmcloud ce application get -n "$JAVA_APP" >/dev/null 2>&1; then
         print_info "Updating existing Java service..."
@@ -424,8 +422,7 @@ deploy_java_service() {
 update_backend_with_java_url() {
     print_header "Updating Backend with Java Service URL"
     
-    # In Code Engine, apps in the same project are reachable by app name alone
-    local java_cluster_url="http://${JAVA_APP}"
+    local java_cluster_url="$JAVA_URL"
 
     print_info "Configuring backend to use Java service at: $java_cluster_url"
 
@@ -456,7 +453,7 @@ deploy_frontend() {
             --min-scale "$MIN_SCALE" \
             --max-scale "$MAX_SCALE" \
             --scale-down-delay "$BACKEND_SCALE_DOWN_DELAY" \
-            --env BACKEND_URL="http://${BACKEND_APP}" \
+            --env BACKEND_URL="$BACKEND_URL" \
             --env NGINX_RESOLVER="172.21.0.10" \
             --wait
     else
@@ -471,7 +468,7 @@ deploy_frontend() {
             --min-scale "$MIN_SCALE" \
             --max-scale "$MAX_SCALE" \
             --scale-down-delay "$BACKEND_SCALE_DOWN_DELAY" \
-            --env BACKEND_URL="http://${BACKEND_APP}" \
+            --env BACKEND_URL="$BACKEND_URL" \
             --env NGINX_RESOLVER="172.21.0.10" \
             --wait
     fi
