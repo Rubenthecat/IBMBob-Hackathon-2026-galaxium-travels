@@ -2,7 +2,7 @@
 ## Member: Ruben Guerra
 # YT DEMO: https://www.youtube.com/watch?v=R7gJglTvbhY
 
-# Consensus
+# Synopsis
 The point of this project is to show IBM Bob's capability to enable developers to create projects that are easily adaptable to any OS of their choosing. Additionally, it demonstrates BOB's ability to create deployment scripts for a chosen Cloud infrastructure. 
 Within the projects folder, in ```artifacts/Issue-tracker``` , i have demonstrated how it can be used as a bug tracker as well. This documentation doubles as a way to train Bob on not making the same mistake twice by creating documentation on changes it has made and referencing it at any time.
 
