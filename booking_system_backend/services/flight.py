@@ -107,7 +107,7 @@ def list_flights(
     if min_price is not None:
         query = query.filter(Flight.base_price >= min_price)
     
-    if max_price is not None:
+    if max_price is not None and max_price > 0:
         query = query.filter(Flight.base_price <= max_price)
     
     # Seat availability filters (main branch style)

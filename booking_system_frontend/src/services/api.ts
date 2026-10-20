@@ -223,6 +223,15 @@ export const healthCheck = async (): Promise<{ status: string }> => {
   return response.data;
 };
 
+/**
+ * Java hold service health check — proxied through the Python backend.
+ * Called on app mount to trigger scale-from-zero for the Java service.
+ */
+export const javaHealthCheck = async (): Promise<{ status: string; service: string }> => {
+  const response = await api.get<{ status: string; service: string }>('/java-health');
+  return response.data;
+};
+
 export default api;
 
 // Made with Bob
