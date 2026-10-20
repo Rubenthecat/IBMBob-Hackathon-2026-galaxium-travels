@@ -23,7 +23,7 @@ FROM --platform=linux/amd64 nginx:alpine
 # Override with --env BACKEND_URL=http://galaxium-backend:8080 in Code Engine.
 # Override with --env NGINX_RESOLVER=172.21.0.10 for Code Engine / Kubernetes.
 ENV BACKEND_URL=http://backend:8080
-ENV NGINX_RESOLVER=127.0.0.11
+ENV NGINX_RESOLVER=172.21.0.10
 
 # Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
