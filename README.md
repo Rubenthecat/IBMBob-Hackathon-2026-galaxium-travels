@@ -1,4 +1,21 @@
-## Quick Start
+# Ruvix Fix Hackathon team repo
+## Member: Ruben Guerra
+# YT Link: https://www.youtube.com/watch?v=YblZcFj6BBI
+
+# Consensus
+The point of this project is to show IBM Bob's capability to enable developers to create projects that are easily adaptable to any OS of their choosing. Additionally, it demonstrates BOB's ability to create deployment scripts for a chosen Cloud infrastructure. 
+Within the project, in artifacts/issue-tracker , i have demonstrated how it can be used as a bug tracker as well. This documentation doubles as a way to train Bob on not making the same mistake twice, by creating change documentation it can reference at any time.
+
+## Quick Start (IBM Deployment Path)
+```
+./scripts/ibm/deploy-to-ibm.sh
+```
+1. The script will exit if you do not have the dependancies installed.
+2. It will list the missing dependacies and you can re-run
+3. You must have an active IBM Cloud account to create resources with the IBM Cloud CLI.
+
+
+## Quick Start (Local Hosting)
 
 Clone the repo and run a single command — the script will ask whether you want to use **Docker** (recommended) or run **locally**, then install any missing dependencies automatically, including the Java Hold Service which is required for full functionality.
 
