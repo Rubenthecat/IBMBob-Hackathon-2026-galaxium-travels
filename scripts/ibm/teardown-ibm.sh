@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_NAME="${PROJECT_NAME:-galaxium-travel-services-maxjesch}"
+PROJECT_NAME="${PROJECT_NAME:-rubenhack}"
 REGION="${REGION:-us-south}"
-RESOURCE_GROUP="${RESOURCE_GROUP:-max_jesch_rg}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-rubenhack-rg}"
 APP_PREFIX="${APP_PREFIX:-}"
 
 # Application names
